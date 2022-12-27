@@ -20,7 +20,7 @@ jobs:
           java-version: 8
 
       - name: Build with Gradle
-        run: ./gradlew build --FULL-STACKTRACE --debug
+        run: ./gradlew build --full-stacktrace
         
       - uses: actions/upload-artifact@v2
         with:
