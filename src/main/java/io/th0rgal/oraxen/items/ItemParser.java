@@ -8,6 +8,7 @@ import io.th0rgal.oraxen.mechanics.Mechanic;
 import io.th0rgal.oraxen.mechanics.MechanicFactory;
 import io.th0rgal.oraxen.mechanics.MechanicsManager;
 import io.th0rgal.oraxen.utils.AdventureUtils;
+import io.th0rgal.oraxen.utils.Utils;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
@@ -51,20 +52,19 @@ public class ItemParser {
         if (section.isConfigurationSection("Pack")) {
             ConfigurationSection packSection = section.getConfigurationSection("Pack");
             oraxenMeta.setPackInfos(packSection);
+            assert packSection != null;
             if (packSection.isInt("custom_model_data"))
-                MODEL_DATAS_BY_ID
-                        .put(section.getName(),
-                                new ModelData(type, oraxenMeta.getModelName(),
-                                        packSection.getInt("custom_model_data")));
+                MODEL_DATAS_BY_ID.put(section.getName(), new ModelData(type, oraxenMeta.getModelName(),
+                        packSection.getInt("custom_model_data")));
         }
     }
 
     public boolean usesMMOItems() {
-        return type == null && crucibleItem == null;
+        return type == null && crucibleItem == null && mmoItem != null;
     }
 
     public boolean usesCrucibleItems() {
-        return type == null && mmoItem == null;
+        return type == null && mmoItem == null && crucibleItem != null;
     }
 
     private String parseComponentString(String miniString) {
@@ -88,28 +88,20 @@ public class ItemParser {
 
     private ItemBuilder applyConfig(ItemBuilder item) {
 
-        if (section.contains("durability"))
-            item.setDurability((short) section.getInt("durability"));
-
         if (section.contains("lore")) {
             List<String> lore = section.getStringList("lore");
             lore.replaceAll(this::parseComponentString);
             item.setLore(lore);
         }
 
+        if (section.contains("durability"))
+            item.setDurability((short) section.getInt("durability"));
         if (section.contains("unbreakable"))
             item.setUnbreakable(section.getBoolean("unbreakable", false));
-
         if (section.contains("unstackable"))
             item.setUnstackable(section.getBoolean("unstackable", false));
-
-        if (section.contains("color")) {
-            String[] colors = section.getString("color").split(", ");
-            item.setColor(org.bukkit.Color.fromRGB(
-                    Integer.parseInt(colors[0]),
-                    Integer.parseInt(colors[1]),
-                    Integer.parseInt(colors[2])));
-        }
+        if (section.contains("color"))
+            item.setColor(Utils.toColor(section.getString("color", "FFFFFF")));
 
         parseMiscOptions(item);
         parseVanillaSections(item);
@@ -119,16 +111,12 @@ public class ItemParser {
     }
 
     private void parseMiscOptions(ItemBuilder item) {
-        if (section.contains("no_auto_update"))
-            oraxenMeta.setNoUpdate(section.getBoolean("no_auto_update"));
-
-        if (section.contains("excludeFromInventory") && section.getBoolean("excludeFromInventory"))
-            oraxenMeta.setExcludedFromInventory();
+        oraxenMeta.setNoUpdate(section.getBoolean("no_auto_update", false));
+        oraxenMeta.setDisableEnchanting(section.getBoolean("disable_enchanting", false));
+        oraxenMeta.setExcludedFromInventory(section.getBoolean("excludeFromInventory", false));
 
         if (!section.contains("injectID") || section.getBoolean("injectId"))
-            item
-                    .setCustomTag(new NamespacedKey(OraxenPlugin.get(), "id"), PersistentDataType.STRING,
-                            section.getName());
+            item.setCustomTag(new NamespacedKey(OraxenPlugin.get(), "id"), PersistentDataType.STRING, section.getName());
     }
 
     @SuppressWarnings({"unchecked", "deprecation"})
@@ -187,9 +175,9 @@ public class ItemParser {
 
         if (section.contains("Enchantments")) {
             ConfigurationSection enchantSection = section.getConfigurationSection("Enchantments");
-            if (enchantSection != null )for (String enchant : enchantSection.getKeys(false))
+            if (enchantSection != null) for (String enchant : enchantSection.getKeys(false))
                 item.addEnchant(EnchantmentWrapper.getByKey(NamespacedKey.minecraft(enchant)),
-                                enchantSection.getInt(enchant));
+                        enchantSection.getInt(enchant));
         }
     }
 

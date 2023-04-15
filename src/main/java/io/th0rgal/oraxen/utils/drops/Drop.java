@@ -1,12 +1,14 @@
 package io.th0rgal.oraxen.utils.drops;
 
 import io.th0rgal.oraxen.api.OraxenItems;
+import io.th0rgal.oraxen.mechanics.provided.gameplay.furniture.FurnitureMechanic;
 import io.th0rgal.oraxen.mechanics.provided.misc.itemtype.ItemTypeMechanic;
 import io.th0rgal.oraxen.mechanics.provided.misc.itemtype.ItemTypeMechanicFactory;
 import org.bukkit.Location;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.ItemFrame;
+import org.bukkit.entity.Entity;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 
@@ -100,15 +102,20 @@ public class Drop {
         if (!location.isWorldLoaded()) return;
 
         int fortuneMultiplier = 1;
-        if (itemInHand != null && itemInHand.hasItemMeta()) {
-            if (silktouch && itemInHand.getItemMeta() != null && itemInHand.getItemMeta().hasEnchant(Enchantment.SILK_TOUCH)) {
-                if (location.getWorld() != null) location.getWorld().dropItemNaturally(location, OraxenItems.getItemById(sourceID).build());
-                return;
+        if (itemInHand != null) {
+            ItemMeta itemMeta = itemInHand.getItemMeta();
+            if (itemMeta != null) {
+                if (silktouch && itemMeta.hasEnchant(Enchantment.SILK_TOUCH)) {
+                    if (location.getWorld() != null)
+                        location.getWorld().dropItemNaturally(location, OraxenItems.getItemById(sourceID).build());
+                    return;
+                }
+
+                if (fortune && itemMeta.hasEnchant(Enchantment.LOOT_BONUS_BLOCKS))
+                    fortuneMultiplier += ThreadLocalRandom.current()
+                            .nextInt(itemMeta.getEnchantLevel(Enchantment.LOOT_BONUS_BLOCKS));
             }
 
-            if (fortune && itemInHand.hasItemMeta() && itemInHand.getItemMeta().hasEnchant(Enchantment.LOOT_BONUS_BLOCKS))
-                fortuneMultiplier += ThreadLocalRandom.current()
-                        .nextInt(itemInHand.getItemMeta().getEnchantLevel(Enchantment.LOOT_BONUS_BLOCKS));
         }
 
         for (Loot loot : loots) {
@@ -116,24 +123,25 @@ public class Drop {
         }
     }
 
-    public void furnitureSpawns(ItemFrame frame, ItemStack itemInHand) {
+    public void furnitureSpawns(Entity baseEntity, ItemStack itemInHand) {
         ItemStack drop = OraxenItems.getItemById(sourceID).build();
+        ItemMeta dropMeta = drop.getItemMeta();
         if (!canDrop(itemInHand)) return;
-        if (!drop.hasItemMeta()) return;
-        if (!frame.getLocation().isWorldLoaded()) return;
+        if (dropMeta == null) return;
+        if (!baseEntity.getLocation().isWorldLoaded()) return;
 
-        if (frame.getItem().getItemMeta() instanceof LeatherArmorMeta leatherArmorMeta) {
-            LeatherArmorMeta clone = (LeatherArmorMeta) drop.getItemMeta().clone();
+        if (FurnitureMechanic.getFurnitureItem(baseEntity).getItemMeta() instanceof LeatherArmorMeta leatherArmorMeta) {
+            LeatherArmorMeta clone = (LeatherArmorMeta) dropMeta.clone();
             clone.setColor(leatherArmorMeta.getColor());
             drop.setItemMeta(clone);
         }
 
-        if (frame.getItem().getItemMeta() instanceof PotionMeta potionMeta) {
-            PotionMeta clone = (PotionMeta) drop.getItemMeta().clone();
+        if (FurnitureMechanic.getFurnitureItem(baseEntity).getItemMeta() instanceof PotionMeta potionMeta) {
+            PotionMeta clone = (PotionMeta) dropMeta.clone();
             clone.setColor(potionMeta.getColor());
             drop.setItemMeta(clone);
         }
 
-        frame.getLocation().getWorld().dropItemNaturally(frame.getLocation(), drop);
+        baseEntity.getLocation().getWorld().dropItemNaturally(baseEntity.getLocation(), drop);
     }
 }

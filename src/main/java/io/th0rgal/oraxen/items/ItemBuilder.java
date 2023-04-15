@@ -34,7 +34,7 @@ public class ItemBuilder {
     private Material type;
     private int amount;
     private int durability; // Damageable
-    private Color color; // LeatherArmorMeta & PotionMeta
+    private Color color; // LeatherArmorMeta, PotionMeta, MapMeta & FireWorkEffectMeta
     private PotionData potionData;
     private List<PotionEffect> potionEffects;
     private OfflinePlayer owningPlayer; // SkullMeta
@@ -86,6 +86,12 @@ public class ItemBuilder {
             potionData = potionMeta.getBasePotionData();
             potionEffects = new ArrayList<>(potionMeta.getCustomEffects());
         }
+
+        if (itemMeta instanceof MapMeta mapMeta)
+            color = mapMeta.getColor();
+
+        if (itemMeta instanceof FireworkEffectMeta effectMeta)
+            color = effectMeta.hasEffect() ? effectMeta.getEffect().getColors().get(0) : Color.WHITE;
 
         if (itemMeta instanceof SkullMeta skullMeta)
             owningPlayer = skullMeta.getOwningPlayer();
@@ -156,6 +162,7 @@ public class ItemBuilder {
     public boolean isUnstackable() {
         return unstackable;
     }
+
     public ItemBuilder setUnstackable(final boolean unstackable) {
         this.unstackable = unstackable;
         return this;
@@ -319,8 +326,11 @@ public class ItemBuilder {
             itemMeta.addItemFlags(itemFlags.toArray(new ItemFlag[0]));
 
         if (enchantments.size() > 0)
-            for (final Map.Entry<Enchantment, Integer> enchant : enchantments.entrySet())
-                itemMeta.addEnchant(enchant.getKey(), enchant.getValue(), true);
+            for (final Map.Entry<Enchantment, Integer> enchant : enchantments.entrySet()) {
+                if (enchant.getKey() == null) continue;
+                int lvl = enchant.getValue() != null ? enchant.getValue() : 1;
+                itemMeta.addEnchant(enchant.getKey(), lvl, true);
+            }
 
         if (hasAttributeModifiers)
             itemMeta.setAttributeModifiers(attributeModifiers);
@@ -357,6 +367,24 @@ public class ItemBuilder {
 
         if (itemMeta instanceof PotionMeta potionMeta)
             return handlePotionMeta(potionMeta);
+
+        if (itemMeta instanceof MapMeta mapMeta && color != null && !color.equals(mapMeta.getColor())) {
+            mapMeta.setColor(color);
+            return mapMeta;
+        }
+
+        if (itemMeta instanceof FireworkEffectMeta effectMeta) {
+            FireworkEffect.Builder fireWorkBuilder = effectMeta.clone().hasEffect() ? effectMeta.getEffect().builder() : FireworkEffect.builder();
+            if (color != null) fireWorkBuilder.withColor(color);
+
+            // If both above fail, the below will throw an exception as builder needs atleast one color
+            // If so return the base meta
+            try {
+                effectMeta.setEffect(fireWorkBuilder.build());
+            } catch (IllegalStateException ignored) {
+            }
+            return effectMeta;
+        }
 
         if (itemMeta instanceof SkullMeta skullMeta) {
             final OfflinePlayer defaultOwningPlayer = skullMeta.getOwningPlayer();

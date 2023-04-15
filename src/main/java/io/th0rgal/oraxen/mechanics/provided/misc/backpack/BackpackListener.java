@@ -11,8 +11,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
@@ -39,19 +38,6 @@ public class BackpackListener implements Listener {
             event.setCancelled(true);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerDeath(final PlayerDeathEvent event) {
-        Player player = event.getEntity();
-        ItemStack item = player.getInventory().getItemInMainHand().clone();
-        InventoryHolder holder = player.getOpenInventory().getTopInventory().getHolder();
-        if (!isBackpack(item) || !(holder instanceof StorageGui gui)) return;
-
-        // Remove backpack as this is dropped by gui.close()
-        if (!event.getKeepInventory())
-            event.getDrops().remove(item);
-        gui.close(player, true);
-    }
-
     @EventHandler
     public void onPlayerDisconnect(final PlayerQuitEvent event) {
         closeBackpack(event.getPlayer());
@@ -74,8 +60,8 @@ public class BackpackListener implements Listener {
 
     // Refresh close backpack if open to refresh with picked up items
     @EventHandler
-    public void onPickupItem(final PlayerAttemptPickupItemEvent event) {
-        Player player = event.getPlayer();
+    public void onPickupItem(final EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
         if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof Gui)) return;
         closeBackpack(player);
         openBackpack(player);
@@ -120,8 +106,6 @@ public class BackpackListener implements Listener {
             backpack.setItemMeta(backpackMeta);
             if (mechanic.hasCloseSound())
                 player.getWorld().playSound(player.getLocation(), mechanic.getCloseSound(), mechanic.getVolume(), mechanic.getPitch());
-            if (player.isDead()) // Otherwise it dupes the backpack
-                player.getWorld().dropItemNaturally(player.getLocation(), backpack);
         });
 
         return gui;

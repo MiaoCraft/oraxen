@@ -1,17 +1,26 @@
 package io.th0rgal.oraxen;
 
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.ticxo.playeranimator.PlayerAnimatorImpl;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIConfig;
 import io.th0rgal.oraxen.api.OraxenItems;
+import io.th0rgal.oraxen.api.events.OraxenItemsLoadedEvent;
 import io.th0rgal.oraxen.commands.CommandsManager;
 import io.th0rgal.oraxen.compatibilities.CompatibilitiesManager;
 import io.th0rgal.oraxen.config.ConfigsManager;
 import io.th0rgal.oraxen.config.Message;
 import io.th0rgal.oraxen.config.Settings;
+import io.th0rgal.oraxen.config.SettingsUpdater;
 import io.th0rgal.oraxen.font.FontManager;
+import io.th0rgal.oraxen.font.packets.InventoryPacketListener;
+import io.th0rgal.oraxen.font.packets.TitlePacketListener;
+import io.th0rgal.oraxen.gestures.GestureManager;
 import io.th0rgal.oraxen.hud.HudManager;
 import io.th0rgal.oraxen.items.ItemUpdater;
 import io.th0rgal.oraxen.mechanics.MechanicsManager;
+import io.th0rgal.oraxen.mechanics.provided.gameplay.furniture.FurnitureFactory;
 import io.th0rgal.oraxen.pack.generation.ResourcePack;
 import io.th0rgal.oraxen.pack.upload.UploadManager;
 import io.th0rgal.oraxen.recipes.RecipesManager;
@@ -35,6 +44,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class OraxenPlugin extends JavaPlugin {
 
     private static OraxenPlugin oraxen;
+    private static GestureManager gestureManager;
     private ConfigsManager configsManager;
     private BukkitAudiences audience;
     private UploadManager uploadManager;
@@ -44,10 +54,39 @@ public class OraxenPlugin extends JavaPlugin {
     private InvManager invManager;
     private ResourcePack resourcePack;
     private ClickActionManager clickActionManager;
+    private ProtocolManager protocolManager;
+    public final boolean isPaperServer;
+    public static boolean supportsDisplayEntities;
 
     public OraxenPlugin() throws NoSuchFieldException, IllegalAccessException {
         oraxen = this;
+        isPaperServer = checkIfPaperServer();
+        supportsDisplayEntities = checkIfSupportsDisplayEntities();
         Logs.enableFilter();
+    }
+
+    private static boolean checkIfPaperServer() {
+        try {
+            Class.forName("com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private static boolean checkIfSupportsDisplayEntities() {
+        try {
+            Class.forName("org.bukkit.entity.ItemDisplay");
+            if (Bukkit.getPluginManager().isPluginEnabled("ViaBackwards") && FurnitureFactory.getInstance().detectViabackwards) {
+                Logs.logWarning("ViaBackwards is installed, disabling Display Entity type for Furniture");
+                Logs.logWarning("Display Entity furniture is entirely invisible and uninteractable for players using 1.19.3 or lower");
+                Logs.logWarning("If you still want to use Display Entity type for Furniture, disable detect_viabackwards in the mechanics.yml");
+                return false;
+            }
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     public static OraxenPlugin get() {
@@ -63,20 +102,30 @@ public class OraxenPlugin extends JavaPlugin {
     public void onEnable() {
         CommandAPI.onEnable(this);
         ProtectionLib.init(this);
+        PlayerAnimatorImpl.initialize(this);
         audience = BukkitAudiences.create(this);
         clickActionManager = new ClickActionManager(this);
         reloadConfigs();
-        fontManager = new FontManager(configsManager);
-        hudManager = new HudManager(configsManager);
-        new CommandsManager().loadCommands();
+        if (Settings.KEEP_UP_TO_DATE.toBool())
+            new SettingsUpdater().handleSettingsUpdate();
         final PluginManager pluginManager = Bukkit.getPluginManager();
+        if (ProtocolLibrary.getPlugin().isEnabled()) {
+            protocolManager = ProtocolLibrary.getProtocolManager();
+            new BreakerSystem().registerListener();
+            if (Settings.FORMAT_INVENTORY_TITLES.toBool())
+                protocolManager.addPacketListener(new InventoryPacketListener());
+            protocolManager.addPacketListener(new TitlePacketListener());
+        } else Logs.logWarning("ProtocolLib is not on your server, some features will not work");
+        if (Settings.DISABLE_LEATHER_REPAIR_CUSTOM.toBool())
+            pluginManager.registerEvents(new CustomArmorListener(), this);
         resourcePack = new ResourcePack(this);
         MechanicsManager.registerNativeMechanics();
         //CustomBlockData.registerListener(this); //Handle this manually
+        hudManager = new HudManager(configsManager);
         fontManager = new FontManager(configsManager);
         soundManager = new SoundManager(configsManager.getSound());
+        gestureManager = new GestureManager();
         OraxenItems.loadItems(configsManager);
-        io.th0rgal.oraxen.items.OraxenItems.loadItems(configsManager);
         fontManager.registerEvents();
         fontManager.verifyRequired(); // Verify the required glyph is there
         hudManager.registerEvents();
@@ -87,22 +136,23 @@ public class OraxenPlugin extends JavaPlugin {
         RecipesManager.load(this);
         invManager = new InvManager();
         new ArmorListener(Settings.ARMOR_EQUIP_EVENT_BYPASS.toStringList()).registerEvents(this);
-        new BreakerSystem().registerListener();
         new CommandsManager().loadCommands();
         postLoading(configsManager);
         try {
             Message.PLUGIN_LOADED.log(AdventureUtils.tagResolver("os", OS.getOs().getPlatformName()));
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) {
+        }
         CompatibilitiesManager.enableNativeCompatibilities();
-        if (Settings.DISABLE_LEATHER_REPAIR_CUSTOM.toBool())
-            pluginManager.registerEvents(new CustomArmorListener(), this);
     }
 
     private void postLoading(final ConfigsManager configsManager) {
         uploadManager = new UploadManager(this);
         uploadManager.uploadAsyncAndSendToPlayers(resourcePack);
         new Metrics(this, 5371);
-        Bukkit.getScheduler().runTask(this, () -> OraxenItems.loadItems(configsManager));
+        Bukkit.getScheduler().runTask(this, () -> {
+            OraxenItems.loadItems(configsManager);
+            Bukkit.getPluginManager().callEvent(new OraxenItemsLoadedEvent());
+        });
     }
 
     @Override
@@ -117,6 +167,14 @@ public class OraxenPlugin extends JavaPlugin {
         hudManager.unregisterEvents();
         MechanicsManager.unloadListeners();
         HandlerList.unregisterAll(this);
+    }
+
+    public ProtocolManager getProtocolManager() {
+        return protocolManager;
+    }
+
+    public GestureManager getGesturesManager() {
+        return gestureManager;
     }
 
     public BukkitAudiences getAudience() {
@@ -149,7 +207,9 @@ public class OraxenPlugin extends JavaPlugin {
         fontManager.registerEvents();
     }
 
-    public HudManager getHudManager() { return hudManager; }
+    public HudManager getHudManager() {
+        return hudManager;
+    }
 
     public void setHudManager(final HudManager hudManager) {
         this.hudManager.unregisterEvents();

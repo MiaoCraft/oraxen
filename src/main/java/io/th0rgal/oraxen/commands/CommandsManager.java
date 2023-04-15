@@ -42,7 +42,10 @@ public class CommandsManager {
                 .withSubcommand((new GlyphCommand()).getGlyphCommand(commandsSection))
                 .withSubcommand((new PrintGlyphCommand()).getPrintGlyphCommand())
                 .withSubcommand((new ItemInfoCommand()).getItemInfoCommand())
+                .withSubcommand((new BlockInfoCommand()).getBlockInfoCommand())
                 .withSubcommand((new HudCommand()).getHudCommand())
+                .withSubcommand((new LogDumpCommand().getLogDumpCommand()))
+                .withSubcommand((new GestureCommand().getGestureCommand()))
                 .executes((sender, args) -> {
                     Message.COMMAND_HELP.send(sender);
                 })
@@ -90,8 +93,7 @@ public class CommandsManager {
                 .withPermission("oraxen.command.pack")
                 .withArguments(new TextArgument("action")
                         .replaceSuggestions(ArgumentSuggestions.strings("send", "msg")))
-                .withArguments(new EntitySelectorArgument<>("targets",
-                        EntitySelector.MANY_PLAYERS))
+                .withArguments(new EntitySelectorArgument.ManyPlayers("targets"))
                 .executes((sender, args) -> {
                     final Collection<Player> targets = (Collection<Player>) args[1];
                     if (args[0].equals("msg"))
@@ -120,8 +122,7 @@ public class CommandsManager {
     private CommandAPICommand getGiveCommand() {
         return new CommandAPICommand("give")
                 .withPermission("oraxen.command.give")
-                .withArguments(new EntitySelectorArgument<>("targets",
-                                EntitySelector.MANY_PLAYERS),
+                .withArguments(new EntitySelectorArgument.ManyPlayers("targets"),
                         new TextArgument("item")
                                 .replaceSuggestions(ArgumentSuggestions.strings(OraxenItems.getItemNames())),
                         new IntegerArgument("amount"))
@@ -161,8 +162,7 @@ public class CommandsManager {
     private CommandAPICommand getSimpleGiveCommand() {
         return new CommandAPICommand("give")
                 .withPermission("oraxen.command.give")
-                .withArguments(new EntitySelectorArgument<>("targets",
-                                EntitySelector.MANY_PLAYERS),
+                .withArguments(new EntitySelectorArgument.ManyPlayers("targets"),
                         new TextArgument("item")
                                 .replaceSuggestions(ArgumentSuggestions.strings(info -> OraxenItems.getItemNames())))
                 .executes((sender, args) -> {
@@ -193,8 +193,7 @@ public class CommandsManager {
     private CommandAPICommand getUpdateCommand() {
         return new CommandAPICommand("update")
                 .withPermission("oraxen.command.update")
-                .withArguments(new EntitySelectorArgument<>("targets",
-                        EntitySelector.MANY_PLAYERS))
+                .withArguments(new EntitySelectorArgument.ManyPlayers("targets"))
                 .withArguments(new TextArgument("type")
                         .replaceSuggestions(ArgumentSuggestions.strings("hand", "all")))
                 .executes((sender, args) -> {

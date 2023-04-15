@@ -17,13 +17,14 @@ import org.apache.commons.codec.binary.Hex;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 public class PrintGlyphCommand {
     public CommandAPICommand getPrintGlyphCommand() {
-        List<String> glyphnames = new ArrayList<>();
+        final List<String> glyphnames = new ArrayList<>();
         glyphnames.add("all");
-        OraxenPlugin.get().getFontManager().getGlyphs().forEach(glyph -> glyphnames.add(glyph.getName()));
+        glyphnames.addAll(OraxenPlugin.get().getFontManager().getGlyphs().stream().map(Glyph::getName).collect(Collectors.toList()));
         return new CommandAPICommand("printglyph")
                 .withPermission("oraxen.command.printglyph")
                 .withArguments(new TextArgument("glyphname").replaceSuggestions(ArgumentSuggestions.strings(glyphnames.toArray(new String[0]))))
@@ -31,12 +32,8 @@ public class PrintGlyphCommand {
                     FontManager fontManager = OraxenPlugin.get().getFontManager();
                     Audience audience = OraxenPlugin.get().getAudience().sender(commandSender);
                     audience.sendMessage(AdventureUtils.MINI_MESSAGE.deserialize("<red><b>Click one of the glyph-ids below to copy the unicode!"));
-                    if (fontManager.getGlyphFromName(String.valueOf(args[0])) != null
-                            ||
-                            String.valueOf(args[0]).equals("all")) {
-
+                    if (fontManager.getGlyphFromName(String.valueOf(args[0])) != null || String.valueOf(args[0]).equals("all")) {
                         printGlyph(fontManager, audience, (String) args[0]);
-
                     } else printUnicode(audience, (String) args[0]);
                 }));
     }
@@ -63,8 +60,7 @@ public class PrintGlyphCommand {
             } catch (NumberFormatException e) {
                 audience.sendMessage(AdventureUtils.MINI_MESSAGE.deserialize("<dark_red><b>Invalid shift number!"));
             }
-        }
-        else {
+        } else {
             Glyph g = fontManager.getGlyphs().stream().filter(glyph -> glyph.getName().equals(glyphName)).findFirst().orElse(null);
             if (g == null) return;
             component = printClickableMsg("<white>" + g.getName(), String.valueOf(g.getCharacter()), "<reset>" + g.getCharacter());

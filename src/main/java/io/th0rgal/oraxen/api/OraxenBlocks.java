@@ -105,13 +105,26 @@ public class OraxenBlocks {
     }
 
     public static void place(String itemID, Location location) {
-        if (!location.getBlock().getType().isAir()) return;
 
         if (isOraxenNoteBlock(itemID)) {
             placeNoteBlock(location, itemID);
         } else if (isOraxenStringBlock(itemID)) {
             placeStringBlock(location, itemID);
         }
+    }
+
+    /**
+     * Get the BlockData assosiated with
+     *
+     * @param itemID The ItemID of the OraxenBlock
+     * @return The BlockData assosiated with the ItemID, can be null
+     */
+    public static BlockData getOraxenBlockData(String itemID) {
+        if (isOraxenNoteBlock(itemID)) {
+            return NoteBlockMechanicFactory.getInstance().createNoteBlockData(itemID);
+        } else if (isOraxenStringBlock(itemID)) {
+            return StringBlockMechanicFactory.getInstance().createTripwireData(itemID);
+        } else return null;
     }
 
     private static void placeNoteBlock(Location location, String itemID) {
@@ -121,7 +134,7 @@ public class OraxenBlocks {
         NoteBlockMechanic mechanic = getNoteBlockMechanic(block);
         if (mechanic == null) return;
 
-        if (mechanic.getLight() != -1)
+        if (mechanic.hasLight())
             WrappedLightAPI.createBlockLight(block.getLocation(), mechanic.getLight());
 
         if (mechanic.hasDryout() && mechanic.getDryout().isFarmBlock()) {
@@ -180,23 +193,24 @@ public class OraxenBlocks {
     private static void removeNoteBlock(Block block, @Nullable Player player) {
         NoteBlockMechanic mechanic = getNoteBlockMechanic(block);
         if (mechanic == null) return;
-        if (mechanic.isDirectional())
-            mechanic = mechanic.getDirectional().getParentBlockMechanic(mechanic);
+        if (mechanic.isDirectional() && !mechanic.getDirectional().isParentBlock())
+            mechanic = mechanic.getDirectional().getParentMechanic();
 
-        OraxenNoteBlockBreakEvent noteBlockBreakEvent = new OraxenNoteBlockBreakEvent(mechanic, block, player);
-        OraxenPlugin.get().getServer().getPluginManager().callEvent(noteBlockBreakEvent);
-        if (noteBlockBreakEvent.isCancelled()) {
-            return;
+        if (player != null) {
+            OraxenNoteBlockBreakEvent noteBlockBreakEvent = new OraxenNoteBlockBreakEvent(mechanic, block, player);
+            OraxenPlugin.get().getServer().getPluginManager().callEvent(noteBlockBreakEvent);
+            if (noteBlockBreakEvent.isCancelled())
+                return;
         }
 
-        if (mechanic.getLight() != -1)
+        if (mechanic.hasLight())
             WrappedLightAPI.removeBlockLight(block.getLocation());
         if (player != null && player.getGameMode() != GameMode.CREATIVE)
             mechanic.getDrop().spawns(block.getLocation(), player.getInventory().getItemInMainHand());
         if (mechanic.isStorage() && mechanic.getStorage().getStorageType() == StorageMechanic.StorageType.STORAGE) {
             mechanic.getStorage().dropStorageContent(block);
         }
-        block.setType(Material.AIR, false);
+        block.setType(Material.AIR);
         checkNoteBlockAbove(block.getLocation());
     }
 
@@ -205,10 +219,12 @@ public class OraxenBlocks {
         ItemStack item = player != null ? player.getInventory().getItemInMainHand() : new ItemStack(Material.AIR);
         if (mechanic == null) return;
 
-        OraxenStringBlockBreakEvent wireBlockBreakEvent = new OraxenStringBlockBreakEvent(mechanic, block, player);
-        OraxenPlugin.get().getServer().getPluginManager().callEvent(wireBlockBreakEvent);
-        if (wireBlockBreakEvent.isCancelled()) {
-            return;
+        if (player != null) {
+            OraxenStringBlockBreakEvent wireBlockBreakEvent = new OraxenStringBlockBreakEvent(mechanic, block, player);
+            OraxenPlugin.get().getServer().getPluginManager().callEvent(wireBlockBreakEvent);
+            if (wireBlockBreakEvent.isCancelled()) {
+                return;
+            }
         }
 
         if (mechanic.hasLight())
@@ -257,6 +273,7 @@ public class OraxenBlocks {
                 .getBlockMechanic((noteBlock.getInstrument().getType()) * 25
                         + noteBlock.getNote().getId() + (noteBlock.isPowered() ? 400 : 0) - 26);
     }
+
     public static NoteBlockMechanic getNoteBlockMechanic(Block block) {
         if (block.getType() != Material.NOTE_BLOCK) return null;
         final NoteBlock noteblock = (NoteBlock) block.getBlockData();

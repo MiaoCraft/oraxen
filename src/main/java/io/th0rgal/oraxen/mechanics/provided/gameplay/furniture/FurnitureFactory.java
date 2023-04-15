@@ -1,5 +1,6 @@
 package io.th0rgal.oraxen.mechanics.provided.gameplay.furniture;
 
+import io.lumine.mythic.bukkit.utils.lib.jooq.impl.QOM;
 import io.th0rgal.oraxen.OraxenPlugin;
 import io.th0rgal.oraxen.mechanics.Mechanic;
 import io.th0rgal.oraxen.mechanics.MechanicFactory;
@@ -19,6 +20,7 @@ public class FurnitureFactory extends MechanicFactory {
     private boolean evolvingFurnitures;
     private static EvolutionTask evolutionTask;
     public final boolean customSounds;
+    public final boolean detectViabackwards;
 
     public FurnitureFactory(ConfigurationSection section) {
         super(section);
@@ -31,10 +33,10 @@ public class FurnitureFactory extends MechanicFactory {
         );
         evolvingFurnitures = false;
         instance = this;
-        customSounds = section.getBoolean("custom_sounds", true);
+        customSounds = OraxenPlugin.get().getConfigsManager().getMechanics().getConfigurationSection("custom_block_sounds").getBoolean("stringblock_and_furniture", true);
 
-        MechanicsManager.registerListeners(OraxenPlugin.get(), new FurnitureListener(this));
         if (customSounds) MechanicsManager.registerListeners(OraxenPlugin.get(), new FurnitureSoundListener());
+        detectViabackwards = OraxenPlugin.get().getConfigsManager().getMechanics().getConfigurationSection("furniture").getBoolean("detect_viabackwards", true);
     }
 
     @Override

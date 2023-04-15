@@ -1,5 +1,6 @@
 package io.th0rgal.oraxen.utils;
 
+import org.bukkit.Color;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -21,9 +22,33 @@ public class Utils {
     private Utils() {
     }
 
-    public static String getLastStringInSplit(String string, String split) {
-        String[] splitString = string.split(split);
-        return splitString[splitString.length - 1];
+    public static Color toColor(String string) {
+        if (string.startsWith("#") || string.startsWith("0x")) {
+            return Color.fromRGB(Integer.parseInt(string.substring(1), 16));
+        }
+        else if (string.contains(",")) {
+            String[] newString = string.replace(", ", ",").split(",", 3);
+            try {
+                int r = Integer.parseInt(newString[0]);
+                int g = Integer.parseInt(newString[1]);
+                int b = Integer.parseInt(newString[2]);
+                return Color.fromRGB(r, g, b);
+            } catch (NumberFormatException e) {
+                return Color.WHITE;
+            }
+        }
+        return Color.WHITE;
+    }
+
+    public static String replaceLast(String string, String toReplace, String replacement) {
+        int pos = string.lastIndexOf(toReplace);
+        if (pos > -1) {
+            return string.substring(0, pos)
+                    + replacement
+                    + string.substring(pos + toReplace.length());
+        } else {
+            return string;
+        }
     }
 
     public static List<String> toLowercaseList(final String... values) {
@@ -43,6 +68,19 @@ public class Utils {
         return Long.parseLong(OffsetDateTime.now().format(DateTimeFormatter.ofPattern(format)));
     }
 
+    public static String getParentDirs(String string) {
+        return Utils.getStringBeforeLastInSplit(string, "/");
+    }
+
+    public static String removeParentDirs(String s) {
+        return Utils.getLastStringInSplit(s, "/");
+    }
+
+    /**
+     * Removes extension AND parent directories
+     * @param s The path or filename including extension
+     * @return Purely the filename, no extension or path
+     */
     public static String removeExtension(String s) {
 
         String separator = System.getProperty("file.separator");
@@ -59,6 +97,26 @@ public class Utils {
             return filename;
 
         return filename.substring(0, extensionIndex);
+    }
+
+    public static String removeExtensionOnly(String s) {
+        // Remove the extension.
+        int extensionIndex = s.lastIndexOf(".");
+        if (extensionIndex == -1)
+            return s;
+
+        return s.substring(0, extensionIndex);
+    }
+
+    public static String getLastStringInSplit(String string, String split) {
+        String[] splitString = string.split(split);
+        return splitString.length > 0 ? splitString[splitString.length - 1] : "";
+    }
+
+    public static String getStringBeforeLastInSplit(String string, String split) {
+        String[] splitString = string.split(split);
+        if (splitString.length == 0) return string;
+        else return string.replace(splitString[splitString.length - 1], "");
     }
 
     public static void writeStringToFile(final File file, final String content) {
