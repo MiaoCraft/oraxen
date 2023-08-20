@@ -6,10 +6,15 @@ import io.th0rgal.oraxen.config.ResourcesManager;
 import io.th0rgal.oraxen.config.Settings;
 import io.th0rgal.oraxen.recipes.listeners.RecipesBuilderEvents;
 import io.th0rgal.oraxen.recipes.listeners.RecipesEventsManager;
+import io.th0rgal.oraxen.recipes.loaders.BlastingLoader;
+import io.th0rgal.oraxen.recipes.loaders.CampfireLoader;
 import io.th0rgal.oraxen.recipes.loaders.FurnaceLoader;
 import io.th0rgal.oraxen.recipes.loaders.ShapedLoader;
 import io.th0rgal.oraxen.recipes.loaders.ShapelessLoader;
+import io.th0rgal.oraxen.recipes.loaders.SmokingLoader;
+import io.th0rgal.oraxen.recipes.loaders.StonecuttingLoader;
 import io.th0rgal.oraxen.utils.AdventureUtils;
+import io.th0rgal.oraxen.utils.OraxenYaml;
 import io.th0rgal.oraxen.utils.logs.Logs;
 import org.bukkit.Bukkit;
 import org.bukkit.Keyed;
@@ -49,6 +54,10 @@ public class RecipesManager {
                 new File(recipesFolder, "furnace.yml").createNewFile();
                 new File(recipesFolder, "shaped.yml").createNewFile();
                 new File(recipesFolder, "shapeless.yml").createNewFile();
+                new File(recipesFolder, "blasting.yml").createNewFile();
+                new File(recipesFolder, "campfire.yml").createNewFile();
+                new File(recipesFolder, "smoking.yml").createNewFile();
+                new File(recipesFolder, "stonecutting.yml").createNewFile();
             } catch (IOException e) {
                 Logs.logError("Error while creating recipes files: " + e.getMessage());
             }
@@ -57,15 +66,23 @@ public class RecipesManager {
         RecipesEventsManager.get().registerEvents();
     }
 
-    public static void reload(JavaPlugin plugin) {
-        if (Settings.RESET_RECIPES.toBool())
-            Bukkit.resetRecipes();
+    public static void reload() {
+        if (Settings.RESET_RECIPES.toBool()) {
+            Iterator<Recipe> recipeIterator = Bukkit.recipeIterator();
+            while (recipeIterator.hasNext()) {
+                NamespacedKey recipeID = ((Keyed) recipeIterator.next()).getKey();
+                if (recipeID.getNamespace().equals("oraxen")) {
+                    Bukkit.removeRecipe(recipeID);
+                }
+            }
+        }
+
         RecipesEventsManager.get().resetRecipes();
         File recipesFolder = new File(OraxenPlugin.get().getDataFolder(), "recipes");
         if (!recipesFolder.exists()) {
             recipesFolder.mkdirs();
             if (Settings.GENERATE_DEFAULT_CONFIGS.toBool())
-                new ResourcesManager(plugin).extractConfigsInFolder("recipes", "yml");
+                new ResourcesManager(OraxenPlugin.get()).extractConfigsInFolder("recipes", "yml");
         }
         registerAllConfigRecipesFromFolder(recipesFolder);
         RecipesEventsManager.get().registerEvents();
@@ -77,7 +94,7 @@ public class RecipesManager {
     }
 
     private static void registerConfigRecipes(File configFile) {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+        YamlConfiguration config = OraxenYaml.loadConfiguration(configFile);
         for (String recipeSetting : config.getKeys(false)) {
             if (!config.isConfigurationSection(recipeSetting))
                 continue;
@@ -92,6 +109,10 @@ public class RecipesManager {
                 case "shaped.yml" -> new ShapedLoader(recipeSection).registerRecipe();
                 case "shapeless.yml" -> new ShapelessLoader(recipeSection).registerRecipe();
                 case "furnace.yml" -> new FurnaceLoader(recipeSection).registerRecipe();
+                case "blasting.yml" -> new BlastingLoader(recipeSection).registerRecipe();
+                case "campfire.yml" -> new CampfireLoader(recipeSection).registerRecipe();
+                case "smoking.yml" -> new SmokingLoader(recipeSection).registerRecipe();
+                case "stonecutting.yml" -> new StonecuttingLoader(recipeSection).registerRecipe();
                 default -> Logs.logError(configFile.getName());
             }
         } catch (NullPointerException exception) {

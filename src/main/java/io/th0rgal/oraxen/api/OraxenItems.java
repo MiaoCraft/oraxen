@@ -4,17 +4,28 @@ import io.th0rgal.oraxen.OraxenPlugin;
 import io.th0rgal.oraxen.config.ConfigsManager;
 import io.th0rgal.oraxen.config.Message;
 import io.th0rgal.oraxen.items.ItemBuilder;
+import io.th0rgal.oraxen.items.ItemParser;
+import io.th0rgal.oraxen.items.ModelData;
 import io.th0rgal.oraxen.mechanics.MechanicFactory;
 import io.th0rgal.oraxen.mechanics.MechanicsManager;
 import io.th0rgal.oraxen.utils.AdventureUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,7 +45,10 @@ public class OraxenItems {
     }
 
     public static void loadItems() {
-        map = configsManager.parseItemConfigs();
+        ItemParser.MODEL_DATAS_BY_ID.clear();
+        ModelData.DATAS.clear();
+        configsManager.assignAllUsedModelDatas();
+        map = configsManager.parseItemConfig();
         final List<String> itemsList = new ArrayList<>();
         for (final Map<String, ItemBuilder> subMap : map.values())
             itemsList.addAll(subMap.keySet());
@@ -46,7 +60,7 @@ public class OraxenItems {
     }
 
     public static String getIdByItem(final ItemStack item) {
-        return (item == null || item.getItemMeta() == null|| item.getItemMeta().getPersistentDataContainer().isEmpty()) ? null
+        return (item == null || item.getItemMeta() == null || item.getItemMeta().getPersistentDataContainer().isEmpty()) ? null
                 : item.getItemMeta().getPersistentDataContainer().get(ITEM_ID, PersistentDataType.STRING);
     }
 
@@ -67,18 +81,12 @@ public class OraxenItems {
     }
 
     public static List<ItemBuilder> getUnexcludedItems() {
-        return itemStream()
-                .filter(item -> !item.getOraxenMeta().isExcludedFromInventory())
+        return itemStream().filter(item -> !item.getOraxenMeta().isExcludedFromInventory())
                 .toList();
     }
 
     public static List<ItemBuilder> getUnexcludedItems(final File file) {
-        return map
-                .get(file)
-                .values()
-                .stream()
-                .filter(item -> !item.getOraxenMeta().isExcludedFromInventory())
-                .toList();
+        return map.get(file).values().stream().filter(item -> !item.getOraxenMeta().isExcludedFromInventory()).toList();
     }
 
     public static List<ItemStack> getItemStacksByName(final List<List<String>> lists) {
@@ -86,17 +94,11 @@ public class OraxenItems {
             final ItemStack[] itemStack = new ItemStack[]{new ItemStack(Material.AIR)};
             list.stream().map(line -> line.split(":")).forEach(param -> {
                 switch (param[0].toLowerCase(Locale.ENGLISH)) {
-                    case "type":
-                        if (exists(param[1]))
-                            itemStack[0] = getItemById(param[1]).build().clone();
-                        else
-                            Message.ITEM_NOT_FOUND.log(AdventureUtils.tagResolver("item", param[1]));
-                        break;
-                    case "amount":
-                        itemStack[0].setAmount(Integer.parseInt(param[1]));
-                        break;
-                    default:
-                        break;
+                    case "type" -> {
+                        if (exists(param[1])) itemStack[0] = getItemById(param[1]).build().clone();
+                        else Message.ITEM_NOT_FOUND.log(AdventureUtils.tagResolver("item", param[1]));
+                    }
+                    case "amount" -> itemStack[0].setAmount(NumberUtils.toInt(param[1], 1));
                 }
             });
             return Stream.of(itemStack[0]);
@@ -109,7 +111,7 @@ public class OraxenItems {
     }
 
     public static Map<File, Map<String, ItemBuilder>> getMap() {
-        return map;
+        return map != null ? map : new HashMap<>();
     }
 
     public static Map<String, ItemBuilder> getEntriesAsMap() {
@@ -150,7 +152,10 @@ public class OraxenItems {
     }
 
     public static String[] getItemNames() {
-        return items;
+        return Arrays.stream(items).filter(item -> {
+            ItemBuilder builder = OraxenItems.getItemById(item);
+            return builder != null && builder.hasOraxenMeta() && !builder.getOraxenMeta().isExcludedFromCommands();
+        }).toArray(String[]::new);
     }
 
 }

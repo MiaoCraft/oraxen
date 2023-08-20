@@ -7,8 +7,12 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+/**
+ * @deprecated This event is deprecated and will be removed in a future version.
+ * Use {@link io.th0rgal.oraxen.api.events.stringblock.OraxenStringBlockBreakEvent} instead.
+ */
+@Deprecated(since = "1.158.0", forRemoval = true)
 public class OraxenStringBlockBreakEvent extends Event implements Cancellable {
 
     private final StringBlockMechanic mechanic;
@@ -17,7 +21,7 @@ public class OraxenStringBlockBreakEvent extends Event implements Cancellable {
     private boolean isCancelled;
     private static final HandlerList HANDLERS = new HandlerList();
 
-    public OraxenStringBlockBreakEvent(StringBlockMechanic mechanic, Block block, @Nullable Player player) {
+    public OraxenStringBlockBreakEvent(@NotNull final StringBlockMechanic mechanic, @NotNull final Block block, @NotNull final Player player) {
         this.mechanic = mechanic;
         this.player = player;
         this.block = block;
@@ -27,14 +31,15 @@ public class OraxenStringBlockBreakEvent extends Event implements Cancellable {
     /**
      * @return The StringBlockMechanic of this block
      */
+    @NotNull
     public StringBlockMechanic getMechanic() {
         return mechanic;
     }
 
     /**
-     * @return The player who broke this block, or null if not triggered by player
+     * @return The player who broke this block
      */
-    @Nullable
+    @NotNull
     public Player getPlayer() {
         return player;
     }
@@ -42,6 +47,7 @@ public class OraxenStringBlockBreakEvent extends Event implements Cancellable {
     /**
      * @return The block that was broken
      */
+    @NotNull
     public Block getBlock() {
         return block;
     }

@@ -4,35 +4,64 @@ import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.TextArgument;
 import io.th0rgal.oraxen.OraxenPlugin;
+import io.th0rgal.oraxen.api.OraxenFurniture;
 import io.th0rgal.oraxen.api.OraxenItems;
+import io.th0rgal.oraxen.api.OraxenPack;
 import io.th0rgal.oraxen.config.Message;
-import io.th0rgal.oraxen.font.FontManager;
+import io.th0rgal.oraxen.config.Settings;
 import io.th0rgal.oraxen.hud.HudManager;
+import io.th0rgal.oraxen.items.ItemUpdater;
 import io.th0rgal.oraxen.mechanics.MechanicsManager;
+import io.th0rgal.oraxen.mechanics.provided.gameplay.furniture.FurnitureUpdater;
 import io.th0rgal.oraxen.recipes.RecipesManager;
-import io.th0rgal.oraxen.sound.SoundManager;
 import io.th0rgal.oraxen.utils.AdventureUtils;
+import io.th0rgal.oraxen.utils.logs.Logs;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.stream.Collectors;
 
 public class ReloadCommand {
 
-    private static void reloadItems(CommandSender sender) {
+    public static void reloadItems(@Nullable CommandSender sender) {
         Message.RELOAD.send(sender, AdventureUtils.tagResolver("reloaded", "items"));
         OraxenItems.loadItems();
+
+        if (Settings.UPDATE_ITEMS.toBool() && Settings.UPDATE_ITEMS_ON_RELOAD.toBool()) {
+            Logs.logInfo("Updating all items in player-inventories...");
+            for (Player player : Bukkit.getServer().getOnlinePlayers()) {
+                PlayerInventory inventory = player.getInventory();
+                Bukkit.getScheduler().runTaskAsynchronously(OraxenPlugin.get(), () -> {
+                    for (int i = 0; i < inventory.getSize(); i++) {
+                        ItemStack oldItem = inventory.getItem(i);
+                        ItemStack newItem = ItemUpdater.updateItem(oldItem);
+                        if (oldItem == null || oldItem.equals(newItem)) continue;
+                        inventory.setItem(i, newItem);
+                    }
+                });
+            }
+        }
+
+        if (Settings.UPDATE_FURNITURE.toBool() && Settings.UPDATE_FURNITURE_ON_RELOAD.toBool()) {
+            Logs.logInfo("Updating all placed furniture...");
+            for (World world : Bukkit.getServer().getWorlds())
+                world.getEntities().stream().filter(OraxenFurniture::isBaseEntity).forEach(OraxenFurniture::updateFurniture);
+        }
+
     }
 
-    private static void reloadPack(OraxenPlugin plugin, CommandSender sender) {
+    public static void reloadPack(@Nullable CommandSender sender) {
         Message.PACK_REGENERATED.send(sender);
-        plugin.setFontManager(new FontManager(plugin.getConfigsManager()));
-        plugin.setSoundManager(new SoundManager(plugin.getConfigsManager().getSound()));
-        plugin.getResourcePack().generate(plugin.getFontManager(),
-                plugin.getSoundManager());
-        plugin.getUploadManager().uploadAsyncAndSendToPlayers(plugin.getResourcePack(), true, true);
+        OraxenPack.reloadPack();
     }
 
-    private static void reloadHud(CommandSender sender) {
+    public static void reloadHud(@Nullable CommandSender sender) {
         Message.RELOAD.send(sender, AdventureUtils.tagResolver("reloaded", "hud"));
         OraxenPlugin.get().reloadConfigs();
         HudManager hudManager = new HudManager(OraxenPlugin.get().getConfigsManager());
@@ -43,43 +72,45 @@ public class ReloadCommand {
         hudManager.restartTask();
     }
 
-    private static void reloadGestures(CommandSender sender) {
+    public static void reloadGestures(@Nullable CommandSender sender) {
         Message.RELOAD.send(sender, AdventureUtils.tagResolver("reloaded", "gestures"));
         OraxenPlugin.get().getGesturesManager().reload();
     }
 
-    public CommandAPICommand getReloadCommand() {
+    public static void reloadRecipes(@Nullable CommandSender sender) {
+        Message.RELOAD.send(sender, AdventureUtils.tagResolver("reloaded", "recipes"));
+        RecipesManager.reload();
+    }
+
+    CommandAPICommand getReloadCommand() {
         return new CommandAPICommand("reload")
                 .withAliases("rl")
                 .withPermission("oraxen.command.reload")
                 .withArguments(new TextArgument("type").replaceSuggestions(
                         ArgumentSuggestions.strings("items", "pack", "hud", "recipes", "messages", "all")))
                 .executes((sender, args) -> {
-                    switch (((String) args[0]).toUpperCase()) {
+                    switch (((String) args.get("type")).toUpperCase()) {
                         case "HUD" -> reloadHud(sender);
                         case "ITEMS" -> {
                             reloadItems(sender);
                             OraxenPlugin.get().getInvManager().regen();
                         }
-                        case "PACK" -> reloadPack(OraxenPlugin.get(), sender);
-                        case "RECIPES" -> RecipesManager.reload(OraxenPlugin.get());
+                        case "PACK" -> reloadPack(sender);
+                        case "RECIPES" -> reloadRecipes(sender);
                         case "CONFIGS" -> OraxenPlugin.get().reloadConfigs();
                         default -> {
-                            OraxenPlugin oraxen = OraxenPlugin.get();
                             MechanicsManager.unloadListeners();
                             MechanicsManager.registerNativeMechanics();
                             OraxenPlugin.get().reloadConfigs();
                             reloadItems(sender);
-                            reloadPack(oraxen, sender);
+                            reloadPack(sender);
                             reloadHud(sender);
-                            RecipesManager.reload(oraxen);
+                            reloadRecipes(sender);
                             OraxenPlugin.get().getInvManager().regen();
                         }
                     }
-                    // This does not clear the tablist, and I am not sure how to do it otherwise
-                    FontManager manager = new FontManager(OraxenPlugin.get().getConfigsManager());
                     for (Player player : Bukkit.getOnlinePlayers()) {
-                        manager.sendGlyphTabCompletion(player, false);
+                        OraxenPlugin.get().getFontManager().sendGlyphTabCompletion(player);
                     }
                 });
     }

@@ -4,27 +4,52 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.jeff_media.morepersistentdatatypes.DataType;
 import io.th0rgal.oraxen.OraxenPlugin;
+import io.th0rgal.oraxen.api.OraxenItems;
 import io.th0rgal.oraxen.compatibilities.provided.mmoitems.WrappedMMOItem;
 import io.th0rgal.oraxen.compatibilities.provided.mythiccrucible.WrappedCrucibleItem;
-import org.bukkit.*;
+import io.th0rgal.oraxen.config.Settings;
+import io.th0rgal.oraxen.utils.OraxenYaml;
+import org.bukkit.Color;
+import org.bukkit.DyeColor;
+import org.bukkit.FireworkEffect;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.TropicalFish;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.*;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.FireworkEffectMeta;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.inventory.meta.MapMeta;
+import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.inventory.meta.TropicalFishBucketMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
-
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 @SuppressWarnings("ALL")
 public class ItemBuilder {
 
-    public final NamespacedKey UNSTACKABLE_KEY = new NamespacedKey(OraxenPlugin.get(), "unstackable");
+    public static final NamespacedKey UNSTACKABLE_KEY = new NamespacedKey(OraxenPlugin.get(), "unstackable");
+    public static final NamespacedKey ORIGINAL_NAME_KEY = new NamespacedKey(OraxenPlugin.get(), "original_name");
 
     private final ItemStack itemStack;
     private final Map<PersistentDataSpace, Object> persistentDataMap = new HashMap<>();
@@ -173,6 +198,14 @@ public class ItemBuilder {
         return this;
     }
 
+    /**
+     * Check if the ItemBuilder has color.
+     * @return true if the ItemBuilder has color that is not default LeatherMetaColor
+     */
+    public boolean hasColor() {
+        return color != null && !color.equals(Color.fromRGB(160, 101, 64));
+    }
+
     public Color getColor() {
         return color;
     }
@@ -311,8 +344,11 @@ public class ItemBuilder {
          */
         ItemMeta itemMeta = handleVariousMeta(itemStack.getItemMeta());
         assert itemMeta != null;
-        if (displayName != null)
+        PersistentDataContainer pdc = itemMeta.getPersistentDataContainer();
+        if (displayName != null) {
+            pdc.set(ORIGINAL_NAME_KEY, DataType.STRING, displayName);
             itemMeta.setDisplayName(displayName);
+        }
 
         itemMeta.setUnbreakable(unbreakable);
 
@@ -325,12 +361,13 @@ public class ItemBuilder {
         if (itemFlags != null)
             itemMeta.addItemFlags(itemFlags.toArray(new ItemFlag[0]));
 
-        if (enchantments.size() > 0)
+        if (enchantments.size() > 0) {
             for (final Map.Entry<Enchantment, Integer> enchant : enchantments.entrySet()) {
                 if (enchant.getKey() == null) continue;
                 int lvl = enchant.getValue() != null ? enchant.getValue() : 1;
                 itemMeta.addEnchant(enchant.getKey(), lvl, true);
             }
+        }
 
         if (hasAttributeModifiers)
             itemMeta.setAttributeModifiers(attributeModifiers);
@@ -340,10 +377,7 @@ public class ItemBuilder {
 
         if (!persistentDataMap.isEmpty())
             for (final Map.Entry<PersistentDataSpace, Object> dataSpace : persistentDataMap.entrySet())
-                itemMeta
-                        .getPersistentDataContainer()
-                        .set(dataSpace.getKey().namespacedKey(),
-                                (PersistentDataType<?, Object>) dataSpace.getKey().dataType(), dataSpace.getValue());
+                pdc.set(dataSpace.getKey().namespacedKey(), (PersistentDataType<?, Object>) dataSpace.getKey().dataType(), dataSpace.getValue());
 
         itemMeta.setLore(lore);
 
@@ -351,6 +385,20 @@ public class ItemBuilder {
         finalItemStack = itemStack;
 
         return this;
+    }
+
+    public void save() {
+        regen();
+        OraxenItems.getMap().entrySet().stream().filter(entry -> entry.getValue().containsValue(this)).findFirst().ifPresent(entry -> {
+            YamlConfiguration yamlConfiguration = OraxenYaml.loadConfiguration(entry.getKey());
+            String color = this.color.getRed() + "," + this.color.getGreen() + "," + this.color.getBlue();
+            yamlConfiguration.set(OraxenItems.getIdByItem(this.build()) + ".color", color);
+            try {
+                yamlConfiguration.save(entry.getKey());
+            } catch (IOException e) {
+                if (Settings.DEBUG.toBool()) e.printStackTrace();
+            }
+        });
     }
 
     private ItemMeta handleVariousMeta(ItemMeta itemMeta) {
@@ -445,6 +493,7 @@ public class ItemBuilder {
             final ItemStack clone = built.clone();
             clone.setAmount(max);
             if (unstackable) handleUnstackable(clone);
+            ItemUpdater.updateItem(clone);
             output[index] = clone;
         }
         if (rest != 0) {

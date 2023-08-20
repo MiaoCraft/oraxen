@@ -7,7 +7,7 @@ general:
   reload: "<prefix><#55ffa4>Successfully reloaded"
   pack_uploading: "<prefix><#D5D6D8>Automatic upload of the resource pack is enabled, uploading..."
   pack_not_uploaded: "<prefix><#fa4943>Resourcepack not uploaded"
-  pack_uploaded: "<prefix><#55ffa4>Resourcepack uploaded on url <url> in <delay> ms"
+  pack_uploaded: "<prefix><#55ffa4>Resourcepack uploaded to <url> in <delay> ms"
   pack_regenerated: "<prefix><#55ffa4>Resourcepack successfully regenerated"
   updating_config: "<prefix><#facc43>Configuration option \"<option>\" not found, adding it!"
   configs_validation_failed: "<prefix><#fa4943>Configurations validation failed, plugin automatically disabled!"
@@ -77,6 +77,9 @@ command:
     no_hud: "<prefix><#fa4943>There is no HUD by the name '<hud_id>'!"
     toggle_on: "<prefix><#55ffa4>Toggled '<hud_id>' on!"
     toggle_off: "<prefix><#fa4943>Toggled '<hud_id>' off!"
+
+  debug.toggle: "<prefix><#55ffa4>Debug mode is now <#43fa8c><state><#55ffa4>!"
+  version: "<prefix><#55ffa4>Oraxen version: <#43fa8c><version><#55ffa4>!"
 
 mechanics:
   not_enough_exp: "<prefix><#fa4943>You need more experience to do this"

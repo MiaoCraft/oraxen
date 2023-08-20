@@ -3,10 +3,13 @@ package io.th0rgal.oraxen.mechanics.provided.gameplay.furniture;
 import io.th0rgal.oraxen.utils.logs.Logs;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public class DisplayEntityProperties {
     //private final Color glowColor;
@@ -18,17 +21,15 @@ public class DisplayEntityProperties {
     private Float shadowRadius;
     private Integer interpolationDuration;
     private Integer interpolationDelay;
-    private final float width;
-    private final float height;
+    private final float displayWidth;
+    private final float displayHeight;
     private final Vector3f scale;
-    private final boolean isInteractable;
 
     public DisplayEntityProperties() {
-        this.isInteractable = true;
-        this.width = 1.0f;
-        this.height = 1.0f;
+        this.displayWidth = 0f;
+        this.displayHeight = 0f;
         this.displayTransform = ItemDisplay.ItemDisplayTransform.NONE;
-        this.scale = new Vector3f(1.0f, 1.0f, 1.0f);
+        this.scale = null;
         this.shadowRadius = null;
         this.shadowStrength = null;
         this.brightness = null;
@@ -38,15 +39,14 @@ public class DisplayEntityProperties {
 
     public DisplayEntityProperties(ConfigurationSection configSection) {
         String itemID = configSection.getParent().getParent().getParent().getName();
-        isInteractable = configSection.getBoolean("interactable", true);
         //glowColor = Utils.toColor(configSection.getString("glow_color", ""));
         viewRange = configSection.getInt("view_range");
         interpolationDuration = configSection.getInt("interpolation_duration");
         interpolationDelay = configSection.getInt("interpolation_delay");
         shadowStrength = (float) configSection.getDouble("shadow_strength");
         shadowRadius = (float) configSection.getDouble("shadow_radius");
-        width = (float) configSection.getDouble("width", 1.0);
-        height = (float) configSection.getDouble("height", 1.0);
+        displayWidth = (float) configSection.getDouble("displayWidth", 0);
+        displayHeight = (float) configSection.getDouble("displayHeight", 0);
         if (configSection.isConfigurationSection("scale"))
             scale = new Vector3f((float) configSection.getDouble("scale.x", 1.0),
                     (float) configSection.getDouble("scale.y", 1.0),
@@ -62,9 +62,9 @@ public class DisplayEntityProperties {
         try {
             displayTransform = ItemDisplay.ItemDisplayTransform.valueOf(configSection.getString("display_transform", ItemDisplay.ItemDisplayTransform.NONE.name()));
         } catch (IllegalArgumentException e) {
-            Logs.logError("Use of illegal ItemDisplayTransform in " + itemID + " furniture.");
-            Logs.logError("Allowed ones are: " + Arrays.stream(ItemDisplay.ItemDisplayTransform.values()).toList().stream().map(Enum::name));
-            Logs.logWarning("Set transform to NONE for " + itemID);
+            Logs.logError("Use of illegal ItemDisplayTransform in furniture: <gold>" + itemID);
+            Logs.logWarning("Allowed ones are: <gold>" + Arrays.stream(ItemDisplay.ItemDisplayTransform.values()).map(Enum::name).toList());
+            Logs.logWarning("Setting transform to NONE for furniture: <gold>" + itemID);
             displayTransform = ItemDisplay.ItemDisplayTransform.NONE;
         }
 
@@ -146,12 +146,12 @@ public class DisplayEntityProperties {
         return shadowRadius;
     }
 
-    public float getWidth() {
-        return width;
+    public float getDisplayWidth() {
+        return displayWidth;
     }
 
-    public float getHeight() {
-        return height;
+    public float getDisplayHeight() {
+        return displayHeight;
     }
 
     public boolean hasScale() {
@@ -162,7 +162,18 @@ public class DisplayEntityProperties {
         return scale;
     }
 
-    public boolean isInteractable() {
-        return isInteractable;
+    public boolean ensureSameDisplayProperties(@NotNull Entity entity) {
+        if (!(entity instanceof ItemDisplay itemDisplay)) return false;
+        itemDisplay.setItemDisplayTransform(displayTransform);
+        itemDisplay.setBillboard(Objects.requireNonNullElse(trackingRotation, Display.Billboard.FIXED));
+        itemDisplay.setBrightness(Objects.requireNonNullElse(brightness, new Display.Brightness(0,0)));
+        itemDisplay.setShadowRadius(Objects.requireNonNullElse(shadowRadius, 0f));
+        itemDisplay.setShadowStrength(Objects.requireNonNullElse(shadowStrength, 0f));
+        itemDisplay.setViewRange(Objects.requireNonNullElse(viewRange, 0));
+        itemDisplay.setInterpolationDuration(Objects.requireNonNullElse(interpolationDuration, 0));
+        itemDisplay.setInterpolationDelay(Objects.requireNonNullElse(interpolationDelay, 0));
+        itemDisplay.getTransformation().getScale().set(Objects.requireNonNullElse(scale, new Vector3f(1,1,1)));
+
+        return true;
     }
 }

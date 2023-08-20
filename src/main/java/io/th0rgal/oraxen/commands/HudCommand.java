@@ -14,7 +14,7 @@ public class HudCommand {
 
     private final HudManager manager = OraxenPlugin.get().getHudManager();
 
-    public CommandAPICommand getHudCommand() {
+    CommandAPICommand getHudCommand() {
         return new CommandAPICommand("hud")
                 .withPermission("oraxen.command.hud.toggle")
                 .withArguments(new TextArgument("type").replaceSuggestions(ArgumentSuggestions.strings("toggle")))
@@ -28,7 +28,7 @@ public class HudCommand {
                 .withArguments(new TextArgument("type").replaceSuggestions(ArgumentSuggestions.strings(huds)))
                 .executes((sender, args) -> {
                     if (sender instanceof Player player) {
-                        String hudId = (String) args[0];
+                        String hudId = (String) args.get("type");
                         Hud hud = manager.getHudFromID(hudId);
                         if (hud == null) {
                             Message.HUD_NO_HUD.send(player, AdventureUtils.tagResolver("hud_id", hudId));

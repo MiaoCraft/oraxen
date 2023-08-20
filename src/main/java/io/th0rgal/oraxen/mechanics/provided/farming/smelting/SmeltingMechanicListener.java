@@ -3,7 +3,11 @@ package io.th0rgal.oraxen.mechanics.provided.farming.smelting;
 import io.th0rgal.oraxen.api.OraxenItems;
 import io.th0rgal.oraxen.mechanics.MechanicFactory;
 import io.th0rgal.oraxen.utils.BlockHelpers;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -65,7 +69,9 @@ public class SmeltingMechanicListener implements Listener {
             return null; // Because item can be null
         String type = item.getType().toString();
         if (type.startsWith("RAW_") && !type.endsWith("_BLOCK")) {
-            item.setType(Material.valueOf(item.getType().toString().substring(4) + "_INGOT"));
+            Material smeltedMaterial = Material.matchMaterial(item.getType().toString().substring(4) + "_INGOT");
+            if (smeltedMaterial == null) return null;
+            item.setType(smeltedMaterial);
             return item;
         }
 

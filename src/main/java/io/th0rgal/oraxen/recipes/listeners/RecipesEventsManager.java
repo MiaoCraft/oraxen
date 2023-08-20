@@ -4,6 +4,7 @@ import io.th0rgal.oraxen.OraxenPlugin;
 import io.th0rgal.oraxen.api.OraxenItems;
 import io.th0rgal.oraxen.config.Settings;
 import io.th0rgal.oraxen.recipes.CustomRecipe;
+import io.th0rgal.oraxen.utils.logs.Logs;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
@@ -16,7 +17,13 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RecipesEventsManager implements Listener {
@@ -50,9 +57,8 @@ public class RecipesEventsManager implements Listener {
         if (!containsOraxenItem || recipe == null) return;
 
         CustomRecipe current = new CustomRecipe(null, recipe.getResult(), Arrays.asList(event.getInventory().getMatrix()));
-        for (CustomRecipe whitelistedRecipe : whitelistedCraftRecipes) {
-            if (whitelistedRecipe.equals(current)) return;
-        }
+        if (whitelistedCraftRecipes.stream().anyMatch(w -> w.equals(current))) return;
+        if (current.isValidDyeRecipe()) return;
 
         event.getInventory().setResult(null);
     }

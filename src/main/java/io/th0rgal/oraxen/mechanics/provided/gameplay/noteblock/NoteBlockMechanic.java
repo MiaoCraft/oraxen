@@ -1,18 +1,18 @@
 package io.th0rgal.oraxen.mechanics.provided.gameplay.noteblock;
 
 import io.th0rgal.oraxen.OraxenPlugin;
-import io.th0rgal.oraxen.compatibilities.CompatibilitiesManager;
 import io.th0rgal.oraxen.mechanics.Mechanic;
 import io.th0rgal.oraxen.mechanics.MechanicFactory;
+import io.th0rgal.oraxen.mechanics.provided.gameplay.limitedplacing.LimitedPlacing;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.noteblock.directional.DirectionalBlock;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.noteblock.farmblock.FarmBlockDryout;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.noteblock.logstrip.LogStripping;
+import io.th0rgal.oraxen.mechanics.provided.gameplay.storage.StorageMechanic;
 import io.th0rgal.oraxen.utils.actions.ClickAction;
 import io.th0rgal.oraxen.utils.blocksounds.BlockSounds;
 import io.th0rgal.oraxen.utils.drops.Drop;
 import io.th0rgal.oraxen.utils.drops.Loot;
-import io.th0rgal.oraxen.utils.limitedplacing.LimitedPlacing;
-import io.th0rgal.oraxen.utils.storage.StorageMechanic;
+import io.th0rgal.oraxen.utils.logs.Logs;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -25,14 +25,13 @@ import java.util.Objects;
 public class NoteBlockMechanic extends Mechanic {
 
     public static final NamespacedKey FARMBLOCK_KEY = new NamespacedKey(OraxenPlugin.get(), "farmblock");
-    protected final boolean hasHardness;
     private final int customVariation;
     private final Drop drop;
     private final LimitedPlacing limitedPlacing;
     private final StorageMechanic storage;
     private final BlockSounds blockSounds;
     private String model;
-    private int period;
+    private final int hardness;
     private final int light;
     private final boolean canIgnite;
     private final boolean isFalling;
@@ -48,68 +47,37 @@ public class NoteBlockMechanic extends Mechanic {
          * section used to configure the mechanic
          */
         super(mechanicFactory, section);
-        if (section.isString("model"))
-            model = section.getString("model");
 
+        model = section.getString("model");
         customVariation = section.getInt("custom_variation");
+        hardness = section.getInt("hardness", 1);
 
-        List<Loot> loots = new ArrayList<>();
-        if (section.isConfigurationSection("drop")) {
-            ConfigurationSection drop = section.getConfigurationSection("drop");
-            for (LinkedHashMap<String, Object> lootConfig : (List<LinkedHashMap<String, Object>>)
-                    drop.getList("loots"))
-                loots.add(new Loot(lootConfig));
-
-            if (drop.isString("minimal_type")) {
-                NoteBlockMechanicFactory mechanic = (NoteBlockMechanicFactory) mechanicFactory;
-                List<String> bestTools = drop.isList("best_tools")
-                        ? drop.getStringList("best_tools")
-                        : new ArrayList<>();
-                this.drop = new Drop(mechanic.toolTypes, loots, drop.getBoolean("silktouch"),
-                        drop.getBoolean("fortune"), getItemID(),
-                        drop.getString("minimal_type"),
-                        bestTools);
-            } else
-                this.drop = new Drop(loots, drop.getBoolean("silktouch"), drop.getBoolean("fortune"),
-                        getItemID());
-        } else
-            drop = new Drop(loots, false, false, getItemID());
-
-        // hardness requires protocollib
-        if (CompatibilitiesManager.hasPlugin("ProtocolLib") && section.isInt("hardness")) {
-            hasHardness = true;
-            period = section.getInt("hardness");
-        } else hasHardness = false;
-
-        light = section.getInt("light", -1);
+        light = Math.min(section.getInt("light", -1), 15);
         clickActions = ClickAction.parseList(section);
         canIgnite = section.getBoolean("can_ignite", false);
         isFalling = section.getBoolean("is_falling", false);
 
-        if (section.isConfigurationSection("farmblock")) {
-            farmBlockDryout = new FarmBlockDryout(getItemID(), Objects.requireNonNull(section.getConfigurationSection("farmblock")));
-            ((NoteBlockMechanicFactory) getFactory()).registerFarmBlock();
-        } else farmBlockDryout = null;
+        ConfigurationSection dropSection = section.getConfigurationSection("drop");
+        drop = Drop.createDrop(dropSection, getItemID());
 
-        if (section.isConfigurationSection("logStrip")) {
-            logStripping = new LogStripping(Objects.requireNonNull(section.getConfigurationSection("logStrip")));
-        } else logStripping = null;
+        ConfigurationSection farmBlockSection = section.getConfigurationSection("farmblock");
+        farmBlockDryout = farmBlockSection != null ? new FarmBlockDryout(getItemID(), farmBlockSection) : null;
+        if (farmBlockDryout != null) ((NoteBlockMechanicFactory) getFactory()).registerFarmBlock();
 
-        if (section.isConfigurationSection("directional")) {
-            directionalBlock = new DirectionalBlock(Objects.requireNonNull(section.getConfigurationSection("directional")));
-        } else directionalBlock = null;
+        ConfigurationSection logStripSection = section.getConfigurationSection("logStrip");
+        logStripping = logStripSection != null ? new LogStripping(logStripSection) : null;
 
-        if (section.isConfigurationSection("limited_placing")) {
-            limitedPlacing = new LimitedPlacing(Objects.requireNonNull(section.getConfigurationSection("limited_placing")));
-        } else limitedPlacing = null;
+        ConfigurationSection directionalSection = section.getConfigurationSection("directional");
+        directionalBlock = directionalSection != null ? new DirectionalBlock(directionalSection) : null;
 
-        if (section.isConfigurationSection("storage")) {
-            storage = new StorageMechanic(Objects.requireNonNull(section.getConfigurationSection("storage")));
-        } else storage = null;
+        ConfigurationSection limitedPlacingSection = section.getConfigurationSection("limited_placing");
+        limitedPlacing = limitedPlacingSection != null ? new LimitedPlacing(limitedPlacingSection) : null;
 
-        if (section.isConfigurationSection("block_sounds")) {
-            blockSounds = new BlockSounds(Objects.requireNonNull(section.getConfigurationSection("block_sounds")));
-        } else blockSounds = null;
+        ConfigurationSection storageSection = section.getConfigurationSection("storage");
+        storage = storageSection != null ? new StorageMechanic(storageSection) : null;
+
+        ConfigurationSection blockSoundsSection = section.getConfigurationSection("block_sounds");
+        blockSounds = blockSoundsSection != null ? new BlockSounds(blockSoundsSection) : null;
     }
 
     public boolean hasLimitedPlacing() { return limitedPlacing != null; }
@@ -155,8 +123,14 @@ public class NoteBlockMechanic extends Mechanic {
         return drop;
     }
 
-    public int getPeriod() {
-        return period;
+    public boolean hasHardness() {
+        if (isDirectional() && !getDirectional().isParentBlock()) {
+            return hardness != -1 || directionalBlock.getParentMechanic().hasHardness();
+        } else return hardness != -1;
+    }
+
+    public int getHardness() {
+        return hardness;
     }
 
     public boolean hasLight() {
@@ -183,6 +157,10 @@ public class NoteBlockMechanic extends Mechanic {
                 action.performActions(player);
             }
         }
+    }
+
+    public boolean isInteractable() {
+        return hasClickActions() || isStorage();
     }
 
 }

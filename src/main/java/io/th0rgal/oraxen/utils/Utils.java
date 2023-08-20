@@ -108,6 +108,12 @@ public class Utils {
         return s.substring(0, extensionIndex);
     }
 
+    public static String getFileNameOnly(String s) {
+        s = Utils.removeParentDirs(s);
+        s = Utils.removeExtensionOnly(s);
+        return s;
+    }
+
     public static String getLastStringInSplit(String string, String split) {
         String[] splitString = string.split(split);
         return splitString.length > 0 ? splitString[splitString.length - 1] : "";
@@ -128,10 +134,10 @@ public class Utils {
         }
     }
 
-    public static int firstEmpty(Map<String, Integer> map, int min) {
-        while (map.containsValue(min))
-            min++;
-        return min;
+    public static char firstEmpty(Map<String, Character> map, int min) {
+        List<Integer> newMap = map.values().stream().map(c -> (int) c).sorted().toList();
+        while (newMap.contains(min)) min++;
+        return (char) min;
     }
 
     public static void swingHand(Player player, EquipmentSlot hand) {
@@ -146,6 +152,7 @@ public class Utils {
      */
     public static ItemStack editItemMeta(ItemStack itemStack, Consumer<ItemMeta> function) {
         ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) return itemStack;
         function.accept(meta);
         itemStack.setItemMeta(meta);
         return itemStack;

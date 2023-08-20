@@ -12,24 +12,28 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import io.th0rgal.oraxen.OraxenPlugin;
 import io.th0rgal.oraxen.api.OraxenBlocks;
 import io.th0rgal.oraxen.api.OraxenFurniture;
-import io.th0rgal.oraxen.api.events.OraxenFurnitureDamageEvent;
-import io.th0rgal.oraxen.api.events.OraxenNoteBlockDamageEvent;
-import io.th0rgal.oraxen.api.events.OraxenStringBlockDamageEvent;
+import io.th0rgal.oraxen.api.events.furniture.OraxenFurnitureDamageEvent;
+import io.th0rgal.oraxen.api.events.noteblock.OraxenNoteBlockDamageEvent;
+import io.th0rgal.oraxen.api.events.stringblock.OraxenStringBlockDamageEvent;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.block.BlockMechanic;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.furniture.FurnitureMechanic;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.noteblock.NoteBlockMechanic;
 import io.th0rgal.oraxen.mechanics.provided.gameplay.stringblock.StringBlockMechanic;
 import io.th0rgal.oraxen.utils.BlockHelpers;
 import io.th0rgal.oraxen.utils.blocksounds.BlockSounds;
+import io.th0rgal.oraxen.utils.logs.Logs;
 import io.th0rgal.protectionlib.ProtectionLib;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -42,6 +46,7 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,18 +88,18 @@ public class BreakerSystem {
                     BlockFace.UP;
 
             HardnessModifier triggeredModifier = null;
-            for (final HardnessModifier modifier : MODIFIERS)
+            for (final HardnessModifier modifier : MODIFIERS) {
                 if (modifier.isTriggered(player, block, item)) {
                     triggeredModifier = modifier;
                     break;
                 }
+            }
             if (triggeredModifier == null) return;
             final long period = triggeredModifier.getPeriod(player, block, item);
             if (period == 0) return;
             if (block.getType() == Material.NOTE_BLOCK && !OraxenBlocks.isOraxenNoteBlock(block)) return;
             if (block.getType() == Material.TRIPWIRE_HOOK && !OraxenBlocks.isOraxenStringBlock(block)) return;
             if (block.getType() == Material.BARRIER && !OraxenFurniture.isFurniture(block)) return;
-
 
             event.setCancelled(true);
 
@@ -112,10 +117,11 @@ public class BreakerSystem {
                     breakerPerLocation.get(location).cancelTasks(OraxenPlugin.get());
 
                 final BukkitScheduler scheduler = Bukkit.getScheduler();
+                // Cancellation state is being ignored.
+                // However still needs to be called for plugin support.
                 final PlayerInteractEvent playerInteractEvent =
                         new PlayerInteractEvent(player, Action.LEFT_CLICK_BLOCK, player.getInventory().getItemInMainHand(), block, blockFace, EquipmentSlot.HAND);
-                //scheduler.runTask(OraxenPlugin.get(), () -> Bukkit.getPluginManager().callEvent(playerInteractEvent));
-                if (playerInteractEvent.useInteractedBlock().equals(Event.Result.DENY)) return;
+                scheduler.runTask(OraxenPlugin.get(), () -> Bukkit.getPluginManager().callEvent(playerInteractEvent));
 
                 // If the relevant damage event is cancelled, return
                 if (blockDamageEventCancelled(block, player)) return;
@@ -128,6 +134,11 @@ public class BreakerSystem {
 
                     @Override
                     public void accept(final BukkitTask bukkitTask) {
+                        // Methods for sending multi-barrier block-breaks
+                        final FurnitureMechanic furnitureMechanic = OraxenFurniture.getFurnitureMechanic(block);
+                        final Entity furnitureBaseEntity = furnitureMechanic != null ? furnitureMechanic.getBaseEntity(block) : null;
+                        final List<Location> furnitureBarrierLocations = furnitureMechanic != null && furnitureBaseEntity != null ? furnitureMechanic.getLocations(FurnitureMechanic.getFurnitureYaw(furnitureBaseEntity), furnitureBaseEntity.getLocation(), furnitureMechanic.getBarriers()) : Collections.singletonList(block.getLocation());
+
                         if (!breakerPerLocation.containsKey(location)) {
                             bukkitTask.cancel();
                             return;
@@ -138,7 +149,10 @@ public class BreakerSystem {
 
                         for (final Entity entity : world.getNearbyEntities(location, 16, 16, 16))
                             if (entity instanceof Player viewer) {
-                                sendBlockBreak(viewer, location, value);
+                                if (furnitureMechanic != null) {
+                                    for (Location barrierLoc : furnitureBarrierLocations)
+                                        sendBlockBreak(viewer, barrierLoc, value);
+                                } else sendBlockBreak(viewer, location, value);
                             }
 
                         if (value++ < 10) return;
@@ -155,9 +169,14 @@ public class BreakerSystem {
                         Bukkit.getScheduler().runTask(OraxenPlugin.get(), () ->
                                 player.removePotionEffect(PotionEffectType.SLOW_DIGGING));
                         breakerPerLocation.remove(location);
-                        for (final Entity entity : world.getNearbyEntities(location, 16, 16, 16))
-                            if (entity instanceof Player viewer)
-                                sendBlockBreak(viewer, location, 10);
+                        for (final Entity entity : world.getNearbyEntities(location, 16, 16, 16)) {
+                            if (entity instanceof Player viewer) {
+                                if (furnitureMechanic != null) {
+                                    for (Location barrierLoc : furnitureBarrierLocations)
+                                        sendBlockBreak(viewer, barrierLoc, value);
+                                } else sendBlockBreak(viewer, location, value);
+                            }
+                        }
                         bukkitTask.cancel();
                     }
                 }, period, period);
@@ -184,27 +203,48 @@ public class BreakerSystem {
 
         switch (block.getType()) {
             case NOTE_BLOCK -> {
-                OraxenNoteBlockDamageEvent event = new OraxenNoteBlockDamageEvent(OraxenBlocks.getNoteBlockMechanic(block), block, player);
-                Bukkit.getScheduler().runTask(OraxenPlugin.get(), () -> Bukkit.getPluginManager().callEvent(event));
-                return event.isCancelled();
+                NoteBlockMechanic mechanic = OraxenBlocks.getNoteBlockMechanic(block);
+                if (mechanic == null) return true;
+                OraxenNoteBlockDamageEvent event = new OraxenNoteBlockDamageEvent(mechanic, block, player);
+                io.th0rgal.oraxen.api.events.OraxenNoteBlockDamageEvent deprecatedEvent = new io.th0rgal.oraxen.api.events.OraxenNoteBlockDamageEvent(mechanic, block, player);
+                Bukkit.getScheduler().runTask(OraxenPlugin.get(), () -> {
+                    Bukkit.getPluginManager().callEvent(event);
+                    Bukkit.getPluginManager().callEvent(deprecatedEvent);
+                });
+                return event.isCancelled() || deprecatedEvent.isCancelled();
             }
             case TRIPWIRE -> {
-                OraxenStringBlockDamageEvent event = new OraxenStringBlockDamageEvent(OraxenBlocks.getStringMechanic(block), block, player);
-                Bukkit.getScheduler().runTask(OraxenPlugin.get(), () -> Bukkit.getPluginManager().callEvent(event));
-                return event.isCancelled();
+                StringBlockMechanic mechanic = OraxenBlocks.getStringMechanic(block);
+                if (mechanic == null) return true;
+                OraxenStringBlockDamageEvent event = new OraxenStringBlockDamageEvent(mechanic, block, player);
+                io.th0rgal.oraxen.api.events.OraxenStringBlockDamageEvent deprecatedEvent = new io.th0rgal.oraxen.api.events.OraxenStringBlockDamageEvent(mechanic, block, player);
+                Bukkit.getScheduler().runTask(OraxenPlugin.get(), () -> {
+                    Bukkit.getPluginManager().callEvent(event);
+                    Bukkit.getPluginManager().callEvent(deprecatedEvent);
+                });
+                return event.isCancelled() || deprecatedEvent.isCancelled();
             }
             case BARRIER -> {
                 try {
                     return Bukkit.getScheduler().callSyncMethod(OraxenPlugin.get(), () -> {
                         FurnitureMechanic mechanic = OraxenFurniture.getFurnitureMechanic(block);
                         if (mechanic == null) return true;
-                        OraxenFurnitureDamageEvent event = new OraxenFurnitureDamageEvent(mechanic, player, block, mechanic.getBaseEntity(block));
-                        Bukkit.getScheduler().runTask(OraxenPlugin.get(), () -> Bukkit.getPluginManager().callEvent(event));
-                        return event.isCancelled();
+                        Entity baseEntity = mechanic.getBaseEntity(block);
+                        if (baseEntity == null) return true;
+                        OraxenFurnitureDamageEvent event = new OraxenFurnitureDamageEvent(mechanic, baseEntity, player, block);
+                        io.th0rgal.oraxen.api.events.OraxenFurnitureDamageEvent deprecatedEvent = new io.th0rgal.oraxen.api.events.OraxenFurnitureDamageEvent(mechanic, baseEntity, player, block);
+                        Bukkit.getScheduler().runTask(OraxenPlugin.get(), () -> {
+                            Bukkit.getPluginManager().callEvent(event);
+                            Bukkit.getPluginManager().callEvent(deprecatedEvent);
+                        });
+                        return event.isCancelled() || deprecatedEvent.isCancelled();
                     }).get();
                 } catch (Exception e) {
                     return false;
                 }
+            }
+            case BEDROCK -> { // For BedrockBreakMechanic
+                return false;
             }
             default -> {
                 return true;

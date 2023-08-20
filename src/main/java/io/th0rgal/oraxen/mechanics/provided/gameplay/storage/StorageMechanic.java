@@ -1,4 +1,4 @@
-package io.th0rgal.oraxen.utils.storage;
+package io.th0rgal.oraxen.mechanics.provided.gameplay.storage;
 
 import com.jeff_media.morepersistentdatatypes.DataType;
 import com.ticxo.modelengine.api.ModelEngineAPI;
@@ -28,7 +28,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 public class StorageMechanic {
 
@@ -67,9 +72,8 @@ public class StorageMechanic {
         if (type != StorageType.PERSONAL) return;
         StorageGui storageGui = createPersonalGui(player, baseEntity);
         storageGui.open(player);
-        if (baseEntity != null) {
-            potentiallyPlayAnimation(baseEntity, openAnimation);
-        }
+        if (baseEntity != null)
+            playOpenAnimation(baseEntity, openAnimation);
         if (hasOpenSound() && location.isWorldLoaded())
             Objects.requireNonNull(location.getWorld()).playSound(location, openSound, volume, pitch);
     }
@@ -78,9 +82,8 @@ public class StorageMechanic {
         if (type != StorageType.DISPOSAL) return;
         StorageGui storageGui = createDisposalGui(location, baseEntity);
         storageGui.open(player);
-        if (baseEntity != null) {
-            potentiallyPlayAnimation(baseEntity, openAnimation);
-        }
+        if (baseEntity != null)
+            playOpenAnimation(baseEntity, openAnimation);
         if (hasOpenSound() && location.isWorldLoaded())
             Objects.requireNonNull(location.getWorld()).playSound(location, openSound, volume, pitch);
     }
@@ -98,13 +101,13 @@ public class StorageMechanic {
         StorageGui storageGui = (frameStorages.containsKey(baseEntity) ? frameStorages.get(baseEntity) : createGui(baseEntity));
         storageGui.open(player);
         frameStorages.put(baseEntity, storageGui);
-        potentiallyPlayAnimation(baseEntity, openAnimation);
+        playOpenAnimation(baseEntity, openAnimation);
         if (hasOpenSound() && baseEntity.getLocation().isWorldLoaded())
             Objects.requireNonNull(baseEntity.getWorld()).playSound(baseEntity.getLocation(), openSound, volume, pitch);
     }
 
-    private void potentiallyPlayAnimation(Entity baseEntity, String animation) {
-        if (animation == null) return;
+    private void playOpenAnimation(Entity baseEntity, String animation) {
+        if (baseEntity == null || animation == null) return;
         PersistentDataContainer pdc = baseEntity.getPersistentDataContainer();
         if (pdc.has(FurnitureMechanic.MODELENGINE_KEY, DataType.UUID)) {
             UUID uuid = pdc.get(FurnitureMechanic.MODELENGINE_KEY, DataType.UUID);
@@ -279,7 +282,7 @@ public class StorageMechanic {
             gui.getInventory().clear();
             if (hasCloseSound() && location.isWorldLoaded())
                 Objects.requireNonNull(location.getWorld()).playSound(location, closeSound, volume, pitch);
-            if (baseEntity != null) potentiallyPlayAnimation(baseEntity, closeAnimation);
+            if (baseEntity != null) playOpenAnimation(baseEntity, closeAnimation);
         });
         return gui;
     }
@@ -307,7 +310,7 @@ public class StorageMechanic {
             storagePDC.set(PERSONAL_STORAGE_KEY, DataType.ITEM_STACK_ARRAY, gui.getInventory().getContents());
             if (hasCloseSound() && player.getLocation().isWorldLoaded())
                 Objects.requireNonNull(player.getLocation().getWorld()).playSound(player.getLocation(), closeSound, volume, pitch);
-            if (baseEntity != null) potentiallyPlayAnimation(baseEntity, closeAnimation);
+            if (baseEntity != null) playOpenAnimation(baseEntity, closeAnimation);
         });
 
         return gui;
@@ -332,9 +335,9 @@ public class StorageMechanic {
 
         gui.setCloseGuiAction(event -> {
             storagePDC.set(STORAGE_KEY, DataType.ITEM_STACK_ARRAY, gui.getInventory().getContents());
-            if (hasCloseSound() && location.isWorldLoaded() && block.getWorld().isChunkLoaded(block.getChunk()))
+            if (hasCloseSound() && BlockHelpers.isLoaded(block.getLocation()))
                 Objects.requireNonNull(location.getWorld()).playSound(location, closeSound, volume, pitch);
-            if (frame != null) potentiallyPlayAnimation(frame, closeAnimation);
+            if (frame != null) playOpenAnimation(frame, closeAnimation);
         });
 
         return gui;
@@ -342,9 +345,12 @@ public class StorageMechanic {
 
     private StorageGui createGui(Entity baseEntity) {
         Location location = baseEntity.getLocation();
+        ItemStack furnitureItem = FurnitureMechanic.getFurnitureItem(baseEntity);
+        if (furnitureItem == null) return null;
         PersistentDataContainer storagePDC = baseEntity.getPersistentDataContainer();
+        PersistentDataContainer itemPDC = furnitureItem.getItemMeta().getPersistentDataContainer();
         boolean shulker = isShulker();
-        PersistentDataContainer shulkerPDC = shulker ? Objects.requireNonNull(FurnitureMechanic.getFurnitureItem(baseEntity).getItemMeta()).getPersistentDataContainer() : null;
+        PersistentDataContainer shulkerPDC = shulker ? itemPDC : null;
         StorageGui gui = Gui.storage().title(AdventureUtils.MINI_MESSAGE.deserialize(title)).rows(rows).create();
 
         // Slight delay to catch stacks sometimes moving too fast
@@ -371,9 +377,9 @@ public class StorageMechanic {
                     storagePDC.set(STORAGE_KEY, DataType.ITEM_STACK_ARRAY, gui.getInventory().getContents());
                 }
             }
-            if (hasCloseSound() && location.isWorldLoaded() && baseEntity.getWorld().isChunkLoaded(baseEntity.getLocation().getChunk()))
+            if (hasCloseSound() && BlockHelpers.isLoaded(baseEntity.getLocation()))
                 Objects.requireNonNull(location.getWorld()).playSound(location, closeSound, volume, pitch);
-            potentiallyPlayAnimation(baseEntity, closeAnimation);
+            playOpenAnimation(baseEntity, closeAnimation);
         });
 
         return gui;

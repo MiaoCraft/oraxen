@@ -11,10 +11,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Event fired right before a player damages the Furniture.
- * If cancelled, the block will not be damaged.
- * @see FurnitureMechanic
+ * @deprecated This event is deprecated and will be removed in a future version.
+ * Use {@link io.th0rgal.oraxen.api.events.furniture.OraxenFurnitureDamageEvent} instead.
  */
+@Deprecated(since = "1.158.0", forRemoval = true)
 public class OraxenFurnitureDamageEvent extends Event implements Cancellable {
 
     boolean isCancelled;
@@ -26,20 +26,25 @@ public class OraxenFurnitureDamageEvent extends Event implements Cancellable {
 
     /**
      * @param mechanic The FurnitureMechanic of this block
+     * @param baseEntity The base-entity for the damaged furniture
      * @param player The player who damaged this block
      * @param block The block that was damaged
-     * @param baseEntity The base-entity for the damaged furniture
      */
-    public OraxenFurnitureDamageEvent(FurnitureMechanic mechanic, Player player, @Nullable Block block, Entity baseEntity) {
+    public OraxenFurnitureDamageEvent(@NotNull final FurnitureMechanic mechanic, @NotNull final Entity baseEntity, @NotNull final Player player, @Nullable final Block block) {
         this.mechanic = mechanic;
         this.player = player;
         this.block = block;
         this.baseEntity = baseEntity;
     }
 
+    public OraxenFurnitureDamageEvent(@NotNull final FurnitureMechanic mechanic, @NotNull final Entity baseEntity, @NotNull final Player player) {
+        this(mechanic, baseEntity, player, null);
+    }
+
     /**
      * @return The FurnitureMechanic of this Furniture
      */
+    @NotNull
     public FurnitureMechanic getMechanic() {
         return mechanic;
     }
@@ -47,6 +52,7 @@ public class OraxenFurnitureDamageEvent extends Event implements Cancellable {
     /**
      * @return The player that damaged the furniture
      */
+    @NotNull
     public Player getPlayer() {
         return player;
     }
@@ -63,6 +69,7 @@ public class OraxenFurnitureDamageEvent extends Event implements Cancellable {
     /**
      * @return The ItemFrame the furniture is in
      */
+    @NotNull
     public Entity getBaseEntity() {
         return baseEntity;
     }

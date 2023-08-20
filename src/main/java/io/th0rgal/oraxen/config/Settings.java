@@ -8,10 +8,12 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.util.List;
 
 public enum Settings {
+    // Generic Plugin stuff
     DEBUG("debug"),
     PLUGIN_LANGUAGE("Plugin.language"),
     KEEP_UP_TO_DATE("Plugin.keep_this_up_to_date"),
     REPAIR_COMMAND_ORAXEN_DURABILITY("Plugin.commands.repair.oraxen_durability_only"),
+    SHOW_PERMISSION_EMOJIS("Plugin.only_show_emojis_with_permission"),
     GENERATE_DEFAULT_ASSETS("Plugin.generation.default_assets"),
     GENERATE_DEFAULT_CONFIGS("Plugin.generation.default_configs"),
     WORLDEDIT_NOTEBLOCKS("Plugin.worldedit.noteblock_mechanic"),
@@ -27,25 +29,42 @@ public enum Settings {
     VERIFY_PACK_FILES("Plugin.experimental.verify_pack_files"),
     EXCLUDE_MALFORMED_ATLAS("Plugin.experimental.exclude_malformed_from_atlas"),
 
+    // Config Tools
     CONFIGS_VERSION("configs_version"),
     UPDATE_CONFIGS("ConfigsTools.enable_configs_updater"),
-    AUTOMATICALLY_SET_GLYPH_CODE("ConfigsTools.automatically_set_glyph_code"),
-    AUTOMATICALLY_SET_MODEL_DATA("ConfigsTools.automatically_set_model_data"),
+    DISABLE_AUTOMATIC_MODEL_DATA("ConfigsTools.disable_automatic_model_data"),
+    DISABLE_AUTOMATIC_GLYPH_CODE("ConfigsTools.disable_automatic_glyph_code"),
     SKIPPED_MODEL_DATA_NUMBERS("ConfigsTools.skipped_model_data_numbers"),
     ERROR_ITEM("ConfigsTools.error_item"),
 
     DISABLE_LEATHER_REPAIR_CUSTOM("CustomArmor.disable_leather_repair"),
+    CUSTOM_ARMOR_SHADER_TYPE("CustomArmor.shader_type"),
     GESTURES_ENABLED("Gestures.enabled"),
 
+    // ItemUpdater
+    UPDATE_ITEMS("ItemUpdater.update_items"),
+    UPDATE_ITEMS_ON_RELOAD("ItemUpdater.update_items_on_reload"),
+    OVERRIDE_RENAMED_ITEMS("ItemUpdater.override_renamed_items"),
+    OVERRIDE_ITEM_LORE("ItemUpdater.override_item_lore"),
+
+    // FurnitureUpdater
+    UPDATE_FURNITURE("FurnitureUpdater.update_furniture"),
+    UPDATE_FURNITURE_ON_RELOAD("FurnitureUpdater.update_on_reload"),
+    UPDATE_FURNITURE_ON_LOAD("FurnitureUpdater.update_on_load"),
+    EXPERIMENTAL_FURNITURE_TYPE_UPDATE("FurnitureUpdater.experimental_furniture_type_update"),
+    EXPERIMENTAL_FIX_BROKEN_FURNITURE("FurnitureUpdater.experimental_fix_broken_furniture"),
+
+    //Misc
     RESET_RECIPES("Misc.reset_recipes"),
     ADD_RECIPES_TO_BOOK("Misc.add_recipes_to_book"),
+    UNICODE_COMPLETIONS("Misc.unicode_completions"),
     ARMOR_EQUIP_EVENT_BYPASS("Misc.armor_equip_event_bypass"),
     SHIELD_DISPLAY("Misc.shield_display"),
     BOW_DISPLAY("Misc.bow_display"),
     CROSSBOW_DISPLAY("Misc.crossbow_display"),
-    AUTO_UPDATE_ITEMS("Misc.auto_update_items"),
     HIDE_SCOREBOARD_NUMBERS("Misc.hide_scoreboard_numbers"),
 
+    //Pack
     GENERATE("Pack.generation.generate"),
     EXCLUDED_FILE_EXTENSIONS("Pack.generation.excluded_file_extensions"),
     GENERATE_ATLAS_FILE("Pack.generation.atlas.generate"),
@@ -59,10 +78,10 @@ public enum Settings {
     COMPRESSION("Pack.generation.compression"),
     PROTECTION("Pack.generation.protection"),
     COMMENT("Pack.generation.comment"),
+    MERGE_DUPLICATE_FONTS("Pack.import.merge_duplicate_fonts"),
     MERGE_DUPLICATES("Pack.import.merge_duplicates"),
     RETAIN_CUSTOM_MODEL_DATA("Pack.import.retain_custom_model_data"),
     MERGE_ITEM_MODELS("Pack.import.merge_item_base_models"),
-    MERGE_FONTS("Pack.import.merge_font_files"),
 
     UPLOAD_TYPE("Pack.upload.type"),
     UPLOAD("Pack.upload.enabled"),
@@ -85,10 +104,11 @@ public enum Settings {
     RECEIVE_FAILED_ACTIONS("Pack.receive.failed_download.actions"),
     RECEIVE_DENIED_ACTIONS("Pack.receive.denied.actions"),
 
+    // Inventory
     ORAXEN_INV_LAYOUT("oraxen_inventory.menu_layout"),
     ORAXEN_INV_ROWS("oraxen_inventory.menu_rows"),
-    ORAXEN_INV_TEXTURE("oraxen_inventory.menu_glyph"),
-    ORAXEN_INV_TEXTURE_OVERLAY("oraxen_inventory.menu_overlay_glyph");
+    ORAXEN_INV_TITLE("oraxen_inventory.main_menu_title"),
+    ;
 
     private final String path;
 

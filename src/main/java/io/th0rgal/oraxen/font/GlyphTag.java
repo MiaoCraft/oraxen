@@ -19,10 +19,14 @@ public class GlyphTag {
     private static final String GLYPH = "glyph";
 
     public static final TagResolver RESOLVER = SerializableResolver.claimingComponent(GLYPH, GlyphTag::create, GlyphTag::emit);
+    public static final TagResolver RESOLVER_SHORT = SerializableResolver.claimingComponent("g", GlyphTag::create, GlyphTag::emit);
 
     static Tag create(final ArgumentQueue args, final Context ctx) throws ParsingException {
         Glyph glyph = OraxenPlugin.get().getFontManager().getGlyphFromName(args.popOr("A glyph value is required").value());
-        return Tag.inserting(Component.text(glyph.getCharacter()).color(NamedTextColor.WHITE).font(Key.key("default")));
+        Component glyphComponent = Component.text(glyph.getCharacter()).font(Key.key("default"));
+        if (!args.hasNext() || !args.peek().value().equals("colorable"))
+            glyphComponent = glyphComponent.color(NamedTextColor.WHITE);
+        return Tag.inserting(glyphComponent);
     }
 
     static @Nullable Emitable emit(final Component component) {
