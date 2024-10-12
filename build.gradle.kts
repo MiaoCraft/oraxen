@@ -7,21 +7,21 @@ import kotlin.io.path.listDirectoryEntries
 plugins {
     id("java")
     //id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("xyz.jpenilla.run-paper") version "2.2.4"
+    id("xyz.jpenilla.run-paper") version "2.3.1"
     id("net.minecrell.plugin-yml.bukkit") version "0.6.0" // Generates plugin.yml
-    id("io.papermc.paperweight.userdev") version "1.7.1" apply false
-    id("io.github.goooler.shadow") version "8.1.7"
+    id("io.papermc.paperweight.userdev") version "1.7.2" apply false
+    id("io.github.goooler.shadow") version "8.1.8"
     alias(libs.plugins.mia.publication)
 }
 
 class NMSVersion(val nmsVersion: String, val serverVersion: String)
 infix fun String.toNms(that: String): NMSVersion = NMSVersion(this, that)
 val SUPPORTED_VERSIONS: List<NMSVersion> = listOf(
-    "v1_18_R1" toNms "1.18.1-R0.1-SNAPSHOT",
-    "v1_18_R2" toNms "1.18.2-R0.1-SNAPSHOT",
-    "v1_19_R1" toNms "1.19.2-R0.1-SNAPSHOT",
-    "v1_19_R2" toNms "1.19.3-R0.1-SNAPSHOT",
-    "v1_19_R3" toNms "1.19.4-R0.1-SNAPSHOT",
+    //"v1_18_R1" toNms "1.18.1-R0.1-SNAPSHOT",
+    //"v1_18_R2" toNms "1.18.2-R0.1-SNAPSHOT",
+    //"v1_19_R1" toNms "1.19.2-R0.1-SNAPSHOT",
+    //"v1_19_R2" toNms "1.19.3-R0.1-SNAPSHOT",
+    //"v1_19_R3" toNms "1.19.4-R0.1-SNAPSHOT",
     "v1_20_R1" toNms "1.20.1-R0.1-SNAPSHOT",
     "v1_20_R2" toNms "1.20.2-R0.1-SNAPSHOT",
     "v1_20_R3" toNms "1.20.4-R0.1-SNAPSHOT",
@@ -35,9 +35,9 @@ val devPluginPath = project.findProperty("oraxen_dev_plugin_path")?.toString()
 val foliaPluginPath = project.findProperty("oraxen_folia_plugin_path")?.toString()
 val spigotPluginPath = project.findProperty("oraxen_spigot_plugin_path")?.toString()
 val pluginVersion: String by project
-val commandApiVersion = "9.5.1"
+val commandApiVersion = "9.5.3"
 val adventureVersion = "4.17.0"
-val platformVersion = "4.3.3"
+val platformVersion = "4.3.4"
 val googleGsonVersion = "2.10.1"
 val apacheLang3Version = "3.14.0"
 group = "io.th0rgal"
@@ -60,10 +60,10 @@ allprojects {
         maven("https://mvn.lumine.io/repository/maven-public/") { metadataSources { artifact() } }// MythicMobs
         maven("https://repo.mineinabyss.com/releases") // PlayerAnimator
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots") // commandAPI snapshots
-        maven("https://repo.auxilor.io/repository/maven-public/") // EcoItems
-        maven("https://maven.enginehub.org/repo/")
         maven("https://repo.oraxen.com/releases")
         maven("https://repo.oraxen.com/snapshots")
+        maven("https://repo.auxilor.io/repository/maven-public/") // EcoItems
+        maven("https://maven.enginehub.org/repo/")
         maven("https://jitpack.io") // JitPack
         maven("https://nexus.phoenixdevt.fr/repository/maven-public/") // MMOItems
         maven("https://repo.codemc.org/repository/maven-public/") // BlockLocker
@@ -80,7 +80,7 @@ allprojects {
         compileOnly("net.kyori:adventure-text-serializer-ansi:$adventureVersion")
         compileOnly("net.kyori:adventure-platform-bukkit:$platformVersion")
         compileOnly("com.comphenix.protocol:ProtocolLib:5.3.0-SNAPSHOT")
-        compileOnly("me.clip:placeholderapi:2.11.4")
+        compileOnly("me.clip:placeholderapi:2.11.6")
         compileOnly("me.gabytm.util:actions-core:$actionsVersion")
         compileOnly("org.springframework:spring-expression:6.0.6")
         compileOnly("io.lumine:Mythic-Dist:5.7.0-SNAPSHOT")
@@ -101,16 +101,16 @@ allprojects {
         compileOnly("nl.rutgerkok:blocklocker:1.10.4-SNAPSHOT")
         compileOnly("org.apache.commons:commons-lang3:$apacheLang3Version")
 
+        implementation("team.unnamed:creative-api:1.7.3") { exclude("net.kyori") }
         implementation("dev.jorel:commandapi-bukkit-shade:$commandApiVersion")
         implementation("org.bstats:bstats-bukkit:3.0.0")
-        implementation("io.th0rgal:protectionlib:1.5.8")
+        implementation("io.th0rgal:protectionlib:1.6.1")
         implementation("com.github.stefvanschie.inventoryframework:IF:0.10.12")
         implementation("com.jeff-media:custom-block-data:2.2.2")
-        implementation("com.jeff_media:MorePersistentDataTypes:2.4.0")
+        implementation("com.jeff-media:MorePersistentDataTypes:2.4.0")
         implementation("com.jeff-media:persistent-data-serializer:1.0")
         implementation("org.jetbrains:annotations:24.1.0") { isTransitive = false }
         implementation("dev.triumphteam:triumph-gui:3.1.10") { exclude("net.kyori") }
-        implementation("com.ticxo:PlayerAnimator:R1.2.8") { isChanging = true }
 
         implementation("me.gabytm.util:actions-spigot:$actionsVersion") { exclude(group = "com.google.guava") }
     }
@@ -120,6 +120,8 @@ dependencies {
     implementation(project(path = ":core"))
     SUPPORTED_VERSIONS.forEach { implementation(project(path = ":${it.nmsVersion}", configuration = "reobf")) }
 }
+
+
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
@@ -198,7 +200,7 @@ bukkit {
         "ProtocolLib",
         "LightAPI", "PlaceholderAPI", "MythicMobs", "MMOItems", "MythicCrucible", "MythicMobs", "BossShopPro",
         "CrateReloaded", "ItemBridge", "WorldEdit", "WorldGuard", "Towny", "Factions", "Lands", "PlotSquared",
-        "NBTAPI", "ModelEngine", "CrashClaim", "ViaBackwards", "HuskClaims", "BentoBox"
+        "NBTAPI", "ModelEngine", "ViaBackwards", "HuskClaims", "HuskTowns", "BentoBox"
     )
     loadBefore = listOf("Realistic_World")
     permissions.create("oraxen.command") {
@@ -237,35 +239,8 @@ if (pluginPath != null) {
             }
         }
 
-        // Create individual copy tasks for each destination
-        val copyToDevPluginPathTask = register<Copy>("copyToDevPluginPath") {
-            dependsOn(shadowJar, jar)
-            from(defaultPath)
-            devPluginPath?.let { into(it) }
-            doLast { println("Copied to plugin directory $devPluginPath") }
-        }
-
-        val copyToFoliaPluginPathTask = register<Copy>("copyToFoliaPluginPath") {
-            dependsOn(shadowJar, jar)
-            from(defaultPath)
-            foliaPluginPath?.let { into(it) }
-            doLast { println("Copied to plugin directory $foliaPluginPath") }
-        }
-
-        val copyToSpigotPluginPathTask = register<Copy>("copyToSpigotPluginPath") {
-            dependsOn(shadowJar, jar)
-            from(defaultPath)
-            spigotPluginPath?.let { into(it) }
-            doLast { println("Copied to plugin directory $spigotPluginPath") }
-        }
-
         // Make the build task depend on all individual copy tasks
-        named<DefaultTask>("build").get().dependsOn(
-            copyJarTask,
-            copyToDevPluginPathTask,
-            copyToFoliaPluginPathTask,
-            copyToSpigotPluginPathTask
-        )
+        named<DefaultTask>("build").get().dependsOn(copyJarTask)
     }
 }
 
